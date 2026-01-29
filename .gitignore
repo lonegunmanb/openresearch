@@ -1,0 +1,4 @@
+# Browser profile data
+browser_profile/
+.locks/
+.skip-website/

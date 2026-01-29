@@ -3,7 +3,8 @@
         "playwright": {
             "command": "npx",
             "args": [
-                "@playwright/mcp@latest"
+                "@playwright/mcp@0.0.25",
+                "--user-data-dir=./browser_profile"
             ]
         }
     }
