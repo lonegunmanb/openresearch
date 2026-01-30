@@ -68,36 +68,11 @@ def get_storage_state_path() -> Path:
     return get_browser_profile_dir() / "storage_state.json"
 
 
-def is_process_running(pid: int) -> bool:
-    """Check if a process with given PID is still running"""
-    try:
-        return psutil.pid_exists(pid) and psutil.Process(pid).is_running()
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        return False
-
-
-def find_chromium_pid() -> Optional[int]:
-    """Find the most recently launched Chromium process PID"""
-    try:
-        chromium_procs = []
-        for proc in psutil.process_iter(['pid', 'name', 'create_time']):
-            name = proc.info['name'].lower()
-            if 'chromium' in name or 'chrome' in name:
-                chromium_procs.append((proc.info['pid'], proc.info['create_time']))
-        
-        if chromium_procs:
-            # Return the most recently created one
-            chromium_procs.sort(key=lambda x: x[1], reverse=True)
-            return chromium_procs[0][0]
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        pass
-    return None
-
-
 def wait_for_context_close(context, storage_state_path: Path, timeout: int = LOGIN_TIMEOUT_SECONDS) -> bool:
     """
     Wait for the browser context to be closed by user.
     
+    Uses Playwright's page close event instead of unreliable PID detection.
     Periodically saves storage state while waiting.
     
     Args:
@@ -108,16 +83,43 @@ def wait_for_context_close(context, storage_state_path: Path, timeout: int = LOG
     Returns:
         True if context was closed by user, False if timeout reached
     """
-    # Find the browser process that was just launched
-    browser_pid = find_chromium_pid()
-    if browser_pid:
-        print(f"   (Browser PID: {browser_pid})")
+    import threading
+    
+    # Use an event to signal when all pages are closed
+    all_pages_closed = threading.Event()
+    
+    def on_page_close(page):
+        # Check if this was the last page
+        try:
+            remaining = len(context.pages)
+            if remaining == 0:
+                all_pages_closed.set()
+        except:
+            all_pages_closed.set()
+    
+    # Register close handler for all existing pages
+    for page in context.pages:
+        page.on("close", on_page_close)
+    
+    # Also register for any new pages that might be created
+    def on_new_page(page):
+        page.on("close", on_page_close)
+    
+    context.on("page", on_new_page)
     
     start_time = time.time()
     last_save_time = start_time
     save_interval = 5.0  # Save storage state every 5 seconds
     
     while time.time() - start_time < timeout:
+        # Check if all pages closed via event
+        if all_pages_closed.is_set():
+            try:
+                context.storage_state(path=str(storage_state_path))
+            except:
+                pass
+            return True
+        
         # Periodically save storage state while browser is open
         current_time = time.time()
         if current_time - last_save_time >= save_interval:
@@ -127,37 +129,17 @@ def wait_for_context_close(context, storage_state_path: Path, timeout: int = LOG
                 pass  # Context may be closing
             last_save_time = current_time
         
-        # Method 1: Check if browser process is still running
-        if browser_pid and not is_process_running(browser_pid):
-            # Save one final time before returning
-            try:
-                context.storage_state(path=str(storage_state_path))
-            except:
-                pass
-            return True
-        
-        # Method 2: Try to access pages - will fail if context closed
+        # Fallback: Try to access pages - will fail if context closed unexpectedly
         try:
             pages = context.pages
-            # If we can access pages but there are none, browser was closed
             if len(pages) == 0:
-                return True
-            
-            # Check if all pages are closed by trying to access them
-            all_closed = True
-            for page in pages:
                 try:
-                    # Try to access page URL - will fail if page is closed
-                    _ = page.url
-                    all_closed = False
+                    context.storage_state(path=str(storage_state_path))
                 except:
                     pass
-            
-            if all_closed and len(pages) > 0:
                 return True
-                
-        except Exception as e:
-            # Context likely closed or disconnected
+        except Exception:
+            # Context disconnected
             return True
         
         time.sleep(BROWSER_CHECK_INTERVAL)

@@ -1,0 +1,125 @@
+{
+  "_comment": "Site login detection configurations. Add new sites here without modifying code.",
+  "_usage": "Each site has: domains (list), required_cookies (list), auth_cookie_patterns (list), localstorage_keys (list)",
+  
+  "sites": {
+    "github": {
+      "name": "GitHub",
+      "domains": ["github.com"],
+      "required_cookies": ["logged_in", "user_session"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "google": {
+      "name": "Google",
+      "domains": ["google.com", "accounts.google.com", "google.com.hk"],
+      "required_cookies": ["SID", "HSID"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "zlibrary": {
+      "name": "Z-Library",
+      "domains": ["z-library.sk", "z-lib.io", "z-lib.org", "singlelogin.re"],
+      "required_cookies": ["remix_userid", "remix_userkey"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "bilibili": {
+      "name": "Bilibili",
+      "domains": ["bilibili.com", "www.bilibili.com"],
+      "required_cookies": ["SESSDATA", "DedeUserID"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "twitter": {
+      "name": "Twitter/X",
+      "domains": ["twitter.com", "x.com"],
+      "required_cookies": ["auth_token", "ct0"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "youtube": {
+      "name": "YouTube",
+      "domains": ["youtube.com", "www.youtube.com"],
+      "required_cookies": ["LOGIN_INFO"],
+      "auth_cookie_patterns": ["APISID", "SAPISID"],
+      "localstorage_keys": []
+    },
+    "reddit": {
+      "name": "Reddit",
+      "domains": ["reddit.com", "www.reddit.com"],
+      "required_cookies": [],
+      "auth_cookie_patterns": ["reddit_session", "token"],
+      "localstorage_keys": ["accessToken"]
+    },
+    "linkedin": {
+      "name": "LinkedIn",
+      "domains": ["linkedin.com", "www.linkedin.com"],
+      "required_cookies": ["li_at"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "discord": {
+      "name": "Discord",
+      "domains": ["discord.com"],
+      "required_cookies": [],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": ["token"]
+    },
+    "notion": {
+      "name": "Notion",
+      "domains": ["notion.so", "www.notion.so"],
+      "required_cookies": ["token_v2"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "openai": {
+      "name": "OpenAI/ChatGPT",
+      "domains": ["openai.com", "chat.openai.com", "chatgpt.com"],
+      "required_cookies": [],
+      "auth_cookie_patterns": ["__Secure-next-auth.session-token"],
+      "localstorage_keys": []
+    },
+    "zhihu": {
+      "name": "Zhihu",
+      "domains": ["zhihu.com", "www.zhihu.com"],
+      "required_cookies": ["z_c0"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "weibo": {
+      "name": "Weibo",
+      "domains": ["weibo.com", "www.weibo.com", "weibo.cn"],
+      "required_cookies": ["SUB"],
+      "auth_cookie_patterns": ["SUBP"],
+      "localstorage_keys": []
+    },
+    "douban": {
+      "name": "Douban",
+      "domains": ["douban.com", "www.douban.com"],
+      "required_cookies": ["dbcl2"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    },
+    "baidu": {
+      "name": "Baidu",
+      "domains": ["baidu.com", "www.baidu.com", "pan.baidu.com"],
+      "required_cookies": ["BDUSS"],
+      "auth_cookie_patterns": [],
+      "localstorage_keys": []
+    }
+  },
+  
+  "generic_detection": {
+    "auth_cookie_patterns": [
+      "session", "sess", "token", "auth", "user", "login", "logged",
+      "jwt", "access", "refresh", "sid", "ssid", "credential", "identity",
+      "account", "member", "apikey", "api_key"
+    ],
+    "auth_localstorage_patterns": [
+      "token", "auth", "user", "session", "jwt", "access", "credential"
+    ],
+    "min_cookie_value_length": 10,
+    "min_auth_cookies_for_login": 1
+  }
+}

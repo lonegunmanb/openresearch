@@ -47,31 +47,90 @@ class SiteLoginCheck:
     name: str                          # Site name
     domains: List[str]                 # Related domain list
     required_cookies: List[str] = None # Required cookie names
-    required_localstorage_keys: List[str] = None  # Required localStorage keys
+    auth_cookie_patterns: List[str] = None  # Patterns to match auth cookies
+    localstorage_keys: List[str] = None  # localStorage keys to check
     
     def __post_init__(self):
         self.required_cookies = self.required_cookies or []
-        self.required_localstorage_keys = self.required_localstorage_keys or []
+        self.auth_cookie_patterns = self.auth_cookie_patterns or []
+        self.localstorage_keys = self.localstorage_keys or []
 
 
-# Predefined site login check configurations
-SITE_CONFIGS = {
-    "zlibrary": SiteLoginCheck(
-        name="Z-Library",
-        domains=["z-library.sk", "z-lib.io", "z-lib.org", "singlelogin.re"],
-        required_cookies=["remix_userid", "remix_userkey"],
-    ),
-    "google": SiteLoginCheck(
-        name="Google",
-        domains=["google.com", "accounts.google.com"],
-        required_cookies=["SID", "HSID", "SSID"],
-    ),
-    "github": SiteLoginCheck(
-        name="GitHub",
-        domains=["github.com"],
-        required_cookies=["logged_in", "user_session"],
-    ),
-}
+def get_site_configs_path() -> Path:
+    """Get the path to site_configs.json"""
+    return Path(__file__).parent / "site_configs.json"
+
+
+def load_site_configs() -> Dict[str, SiteLoginCheck]:
+    """
+    Load site configurations from JSON file.
+    Falls back to hardcoded defaults if file not found.
+    """
+    config_path = get_site_configs_path()
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            configs = {}
+            for key, site in data.get("sites", {}).items():
+                configs[key] = SiteLoginCheck(
+                    name=site.get("name", key),
+                    domains=site.get("domains", []),
+                    required_cookies=site.get("required_cookies", []),
+                    auth_cookie_patterns=site.get("auth_cookie_patterns", []),
+                    localstorage_keys=site.get("localstorage_keys", []),
+                )
+            return configs
+        except (json.JSONDecodeError, IOError, KeyError):
+            pass
+    
+    # Fallback defaults
+    return {
+        "github": SiteLoginCheck(
+            name="GitHub",
+            domains=["github.com"],
+            required_cookies=["logged_in", "user_session"],
+        ),
+        "google": SiteLoginCheck(
+            name="Google",
+            domains=["google.com", "accounts.google.com"],
+            required_cookies=["SID", "HSID"],
+        ),
+    }
+
+
+def load_generic_detection_config() -> Dict[str, Any]:
+    """Load generic detection settings from config file."""
+    config_path = get_site_configs_path()
+    
+    defaults = {
+        "auth_cookie_patterns": [
+            "session", "sess", "token", "auth", "user", "login", "logged",
+            "jwt", "access", "sid", "credential", "identity"
+        ],
+        "auth_localstorage_patterns": [
+            "token", "auth", "user", "session", "jwt", "access"
+        ],
+        "min_cookie_value_length": 10,
+        "min_auth_cookies_for_login": 1,
+    }
+    
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get("generic_detection", defaults)
+        except (json.JSONDecodeError, IOError):
+            pass
+    
+    return defaults
+
+
+# Load configs at module level
+SITE_CONFIGS = load_site_configs()
+GENERIC_DETECTION = load_generic_detection_config()
 
 
 def get_domain_from_url(url: str) -> str:
@@ -239,10 +298,11 @@ def check_site_login(state_file: Path, site_key: str) -> Dict[str, Any]:
 
 def check_domain_login(state_file: Path, domain: str) -> Dict[str, Any]:
     """
-    Check if any login-related cookies exist for a domain.
+    Check if a domain has valid login cookies/localStorage.
     
-    This is a generic check that doesn't require predefined site configs.
-    It looks for any cookies associated with the domain.
+    Uses a multi-tier approach:
+    1. Check if domain matches a known site config (exact rules)
+    2. Use enhanced generic detection (patterns + value validation)
     
     Args:
         state_file: storage_state.json file path
@@ -255,10 +315,23 @@ def check_domain_login(state_file: Path, domain: str) -> Dict[str, Any]:
         "logged_in": False,
         "domain": domain,
         "cookie_count": 0,
-        "cookie_names": [],
+        "auth_cookies": [],
+        "localstorage_auth": [],
         "details": ""
     }
     
+    # First, check if this domain matches any known site config
+    for site_key, config in SITE_CONFIGS.items():
+        for config_domain in config.domains:
+            if domain == config_domain or domain.endswith(f".{config_domain}") or config_domain.endswith(f".{domain}"):
+                # Use site-specific check
+                site_result = check_site_login(state_file, site_key)
+                result["logged_in"] = site_result.get("logged_in", False)
+                result["auth_cookies"] = site_result.get("found_cookies", [])
+                result["details"] = site_result.get("details", "")
+                return result
+    
+    # Generic detection for unknown sites
     state_data = load_storage_state(state_file)
     if not state_data:
         result["details"] = f"State file does not exist or is invalid: {state_file}"
@@ -266,15 +339,59 @@ def check_domain_login(state_file: Path, domain: str) -> Dict[str, Any]:
     
     cookies = get_cookies_for_domain(state_data, domain)
     result["cookie_count"] = len(cookies)
-    result["cookie_names"] = [c.get("name", "") for c in cookies]
     
-    # Consider logged in if there are any cookies for this domain
-    # This is a heuristic - having cookies suggests some interaction/login
-    if len(cookies) > 0:
-        result["logged_in"] = True
-        result["details"] = f"Found {len(cookies)} cookies for {domain}"
-    else:
+    if not cookies:
         result["details"] = f"No cookies found for {domain}"
+        return result
+    
+    # Get generic detection settings
+    patterns = GENERIC_DETECTION.get("auth_cookie_patterns", [])
+    min_value_len = GENERIC_DETECTION.get("min_cookie_value_length", 10)
+    min_auth_cookies = GENERIC_DETECTION.get("min_auth_cookies_for_login", 1)
+    
+    # Find auth cookies: name matches pattern AND value looks like a token
+    auth_cookies = []
+    for cookie in cookies:
+        cookie_name = cookie.get("name", "").lower()
+        cookie_value = cookie.get("value", "")
+        
+        # Check if cookie name matches any auth pattern
+        matches_pattern = any(p in cookie_name for p in patterns)
+        
+        # Check if value looks like a real token (not empty, not too short)
+        has_valid_value = len(cookie_value) >= min_value_len
+        
+        if matches_pattern and has_valid_value:
+            auth_cookies.append(cookie.get("name"))
+    
+    result["auth_cookies"] = auth_cookies
+    
+    # Check localStorage too
+    ls_patterns = GENERIC_DETECTION.get("auth_localstorage_patterns", [])
+    localstorage = get_localstorage_for_origin(state_data, domain)
+    
+    auth_ls_keys = []
+    for key, value in localstorage.items():
+        key_lower = key.lower()
+        if any(p in key_lower for p in ls_patterns) and len(value) >= min_value_len:
+            auth_ls_keys.append(key)
+    
+    result["localstorage_auth"] = auth_ls_keys
+    
+    # Determine login status
+    total_auth = len(auth_cookies) + len(auth_ls_keys)
+    result["logged_in"] = total_auth >= min_auth_cookies
+    
+    # Generate details
+    if result["logged_in"]:
+        auth_sources = []
+        if auth_cookies:
+            auth_sources.append(f"cookies: {auth_cookies[:3]}")
+        if auth_ls_keys:
+            auth_sources.append(f"localStorage: {auth_ls_keys[:3]}")
+        result["details"] = f"Found auth indicators for {domain} ({', '.join(auth_sources)})"
+    else:
+        result["details"] = f"Found {len(cookies)} cookies for {domain}, but no valid auth indicators"
     
     return result
 
