@@ -2,6 +2,7 @@
 browser_profile/
 .locks/
 .skip-website/
+assets/
 ### core template
 *.swp
 *.*~
