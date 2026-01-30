@@ -1,0 +1,12 @@
+{
+  "name": "paper-downloader",
+  "version": "1.0.0",
+  "description": "Search and download academic papers using Playwright browser automation with Sci-Hub fallback",
+  "author": "openresearch",
+  "keywords": ["academic", "papers", "doi", "sci-hub", "research", "pdf", "download", "playwright"],
+  "dependencies": {
+    "mcp": ["playwright"],
+    "python": ["markitdown[pdf]"],
+    "system": ["chrome"]
+  }
+}
