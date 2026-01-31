@@ -42,6 +42,11 @@ When pre-flight check returns exit code 2 (needs login):
 python .claude/skills/site-login/scripts/site_login.py <url>
 ```
 
+⚠️ **IMPORTANT FOR AGENTS:** Before running the login script, you MUST inform the user:
+> "I'm opening a browser for you to login. **Please close the browser window after completing the login** so I can continue."
+
+The script detects login completion by monitoring when the user closes the browser. If the user doesn't close the browser, the agent will wait indefinitely (up to timeout).
+
 **Exit codes:**
 - `0` - Success (logged in)
 - `1` - Skipped (was already marked as skipped)
