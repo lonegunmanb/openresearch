@@ -146,3 +146,14 @@ python .claude/skills/site-login/scripts/browser_state_utils.py <domain>
 - Python 3.8+
 - playwright (`pip install playwright && playwright install`)
 - psutil (`pip install psutil`)
+
+## Anti-Bot Verification?
+
+If you encounter any of the following situations:
+- CAPTCHA, reCAPTCHA, hCaptcha challenges
+- Cloudflare DDoS protection / "Checking your browser" page
+- DDoS-Guard verification
+- "Verify you are human" or "I'm not a robot" prompts
+- Any automated access blocking or verification challenges
+
+**DO NOT** simply increase wait times or retry. Instead, read `.claude/skills/human-assisted-browser/SKILL.md` and follow its workflow to request human assistance.

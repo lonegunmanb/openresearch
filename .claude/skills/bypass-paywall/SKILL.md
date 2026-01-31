@@ -56,6 +56,17 @@ If archive sites show CAPTCHA or bot detection:
 - Wait briefly and retry
 - Some archives may be temporarily unavailable
 
+## Anti-Bot Verification?
+
+If you encounter any of the following situations:
+- CAPTCHA, reCAPTCHA, hCaptcha challenges
+- Cloudflare DDoS protection / "Checking your browser" page
+- DDoS-Guard verification
+- "Verify you are human" or "I'm not a robot" prompts
+- Any automated access blocking or verification challenges
+
+**DO NOT** simply increase wait times or retry. Instead, read `.claude/skills/human-assisted-browser/SKILL.md` and follow its workflow to request human assistance.
+
 ## Example
 
 Original (paywalled):

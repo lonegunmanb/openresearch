@@ -113,6 +113,7 @@ Read and follow the workflow defined there.
 2. **Maintain traceability** - Every piece of information must have a URL source
 3. **Flag uncertainty** - If information is ambiguous, clearly indicate it
 4. **Prioritize authoritative sources** - .gov, .edu, official sites over social media
+5. **Always use Playwright MCP tools** - When you need to control the browser (navigate, click, type, take screenshots, etc.), **always use the MCP Playwright tools** (e.g., `mcp_playwright_browser_navigate`, `mcp_playwright_browser_click`, `mcp_playwright_browser_snapshot`). **Never attempt to write or execute scripts to control Playwright directly** - the MCP tools provide a more reliable and consistent interface for browser automation.
 
 ---
 

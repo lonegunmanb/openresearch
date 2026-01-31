@@ -1,6 +1,6 @@
 ---
 name: human-assisted-browser
-description: Handle anti-bot verification with human assistance. Use when an agent encounters CAPTCHA, reCAPTCHA, or other verification challenges that require human intervention. Provides a workflow for the agent to pause, wait for human help, then resume execution.
+description: Handle anti-bot verification with human assistance. Use when an agent encounters CAPTCHA, reCAPTCHA, Cloudflare DDoS protection, or other verification challenges that require human intervention. Provides a workflow for the agent to pause, wait for human help, then resume execution.
 ---
 
 # Human-Assisted Browser Skill
@@ -10,6 +10,7 @@ Enables agents to request human assistance when encountering anti-bot verificati
 ## When to Use
 
 - Agent encounters reCAPTCHA, hCaptcha, or other CAPTCHA challenges
+- Website shows Cloudflare DDoS protection / "Checking your browser" page
 - Website blocks automated access and requires verification
 - Login pages with complex anti-bot measures
 - Any situation where human visual verification is required
@@ -63,7 +64,11 @@ CAPTCHA_INDICATORS = [
     "I'm not a robot",
     "unusual traffic",
     "please complete the challenge",
-    "robot check"
+    "robot check",
+    "checking your browser",
+    "ddos protection",
+    "cloudflare",
+    "just a moment"
 ]
 ```
 
