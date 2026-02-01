@@ -1,4 +1,17 @@
-基于 GitHub Copilot CLI 与 MCP 协议的纯命令行自主深度研究架构设计报告
+基于 GitHub Copilot CLI 与 MCP 协议的纯命令行自主深度关键设│ └── .关键设计决策分析：
+.copilot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了"链接失效（Link Rot）"问题，并允许后续的"阅读 Agent"在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
+3.2 task.md 模板详解：状态机的Schemalot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了"链接失效（Link Rot）"问题，并允许后续的"阅读 Agent"在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
+3.2 task.md 模板详解：状态机的Schemals/ # 临时生成的辅助脚本（如 Python 数据处理脚本）
+关键设计决策分析：
+.copilot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了"链接失效（Link Rot）"问题，并允许后续的"阅读 Agent"在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
+3.2 task.md 模板详解：状态机的Schemalot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了"链接失效（Link Rot）"问题，并允许后续的"阅读 Agent"在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
+3.2 task.md 模板详解：状态机的Schema分析：
+.copilot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了"链接失效（Link Rot）"问题，并允许后续的"阅读 Agent"在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。构设计报告
 1. 执行摘要与架构范式演进
 在生成式人工智能（GenAI）向代理式人工智能（Agentic AI）演进的浪潮中，深度研究（Deep Research）系统代表了当前认知自动化的最高水平。传统的检索增强生成（RAG）技术虽然解决了知识截止和幻觉问题，但其本质仍是单次的“检索-生成”线性过程，缺乏处理复杂长尾问题所需的多步推理、自我纠错和跨源验证能力。Google 发布的 Gemini Deep Research 展示了一种通过长时程推理（Test-Time Compute）和异步任务编排来实现深度认知的可能性 1。然而，现有的深度研究实现往往依赖复杂的编译型语言（如 Go、Rust）或庞大的应用服务器框架（如 LangChain、AutoGPT），这提高了部署门槛并降低了系统的透明度。
 本报告提出并详尽设计了一种纯命令行（CLI-Native）的自主深度研究架构。该架构彻底摒弃了传统的应用程序代码编写，转而利用GitHub Copilot CLI 作为通用的认知推理引擎，配合 Shell 脚本作为胶水逻辑，以及 Markdown 文件作为持久化状态机。这种设计理念回归了 Unix 哲学的核心——“一切皆文件”与“小工具组合”，通过文本流（Text Streams）和标准输入输出（Stdio）实现复杂的智能体编排。
@@ -29,17 +42,18 @@
 │ ├──.copilot/ # Copilot CLI 的局部配置
 │ │ ├── mcp-config.json # 任务级 MCP 服务器配置
 │ │ └── config.json # 模型参数（如温度、推理模型选择）
-│ ├── artifacts/ # 原始资料归档（防丢失/溯源）
+│ ├── assets/ # 原始资料归档（防丢失/溯源）
 │ │ ├── web/ # 网页 HTML 快照
 │ │ ├── pdf/ # 下载的 PDF 文件
-│ │ └── images/ # 提取的图表
+│ │ ├── images/ # 提取的图表
+│ │ └── ebook/ # 其他格式的电子书（EPUB、MOBI 等）
 │ ├── logs/ # 执行日志（用于调试与审计）
 │ │ ├── loop.log # 主循环的 Shell 输出
 │ │ └── thought_stream.md # Agent 的思维链记录（CoT）
 │ └── tools/ # 临时生成的辅助脚本（如 Python 数据处理脚本）
 关键设计决策分析：
 .copilot/mcp-config.json 的局部化：虽然 GitHub Copilot CLI 允许全局配置 MCP，但在深度研究场景中，不同任务可能需要不同的工具集（例如，金融研究需要 Bloomberg MCP，而技术研究需要 GitHub MCP）。通过在项目根目录放置局部配置文件，我们利用了 CLI 对项目级配置的优先加载特性 8，确保了工具权限的最小化原则。
-artifacts/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了“链接失效（Link Rot）”问题，并允许后续的“阅读 Agent”在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
+assets/ 的物理隔离：为了复刻 Gemini 的溯源能力 1，Agent 不仅要在 task.md 中记录链接，必须下载原始文件的快照。这解决了“链接失效（Link Rot）”问题，并允许后续的“阅读 Agent”在本地对长文档（如财报 PDF）进行深度解析，避免重复消耗网络带宽和 tokens。
 3.2 task.md 模板详解：状态机的Schema
 task.md 文件不仅仅是笔记，它是一个结构严格的数据库。我们利用 Markdown 的Frontmatter (YAML) 存储机器可读的元数据，利用 Heading (#) 分隔不同的上下文区域。
 task.md 模板规范：
@@ -61,7 +75,7 @@ mission_id: "DR-20240520-001" created_at: "2024-05-20T10:00:00Z" status: "PLANNI
 [Fact-001] 硫化物电解质的成本目前为 $500/kg，目标是降至 $50/kg。
 Source: (Toyota Technical Review 2024)
 Confidence: High
-Raw_File: artifacts/web/toyota_review.html
+Raw_File: assets/web/toyota_review.html
 3.2 制造设备维度
 (待填充...)
 4. 来源注册表 (Source Registry)
@@ -77,7 +91,7 @@ https://...
 Toyota Review
 PDF
 2024-05-20
-artifacts/pdf/s1.pdf
+assets/pdf/s1.pdf
 
 5. 反思与暂存区 (Scratchpad)
 Agent 的思维链缓存。用于记录当前的困惑、发现的矛盾或下一步的策略调整。
@@ -307,7 +321,7 @@ Gemini 使用证据加权算法来解决冲突 1。我们在【综合 Agent】�
 显式矛盾呈现：Prompt 强制要求：“如果发现 Source A 与 Source B 冲突，必须在报告中明确写出‘关于 X 存在争议：A 指出...而 B 指出...’，并根据信度评分给出建议倾向。”
 7.2 溯源与反幻觉 (Grounding & Anti-Hallucination)
 Gemini 的 Interactions API 强制保存所有上下文以支持回溯 1。
-物理存储：我们将所有爬取的网页和 PDF 保存到 artifacts/ 目录。
+物理存储：我们将所有爬取的网页和 PDF 保存到 assets/ 目录。
 索引一致性：task.md 中的 Source Registry 表是唯一真理源。Agent 被禁止引用不在该表中的来源。
 引用检查：在【反思 Agent】的 Prompt 中加入正则检查指令：检查所有论断是否都跟随了 格式的引用标签。如果没有，拒绝进入 SYNTHESIZING 状态。
 7.3 停止准则 (Stopping Criteria)

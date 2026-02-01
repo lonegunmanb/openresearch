@@ -36,8 +36,9 @@ The browser state is unpredictable (popups, CAPTCHAs, different layouts). You MU
 
 3. **Convert to Markdown:**
    ```bash
-   mv /tmp/paper.pdf ./assets/
-   ~/.local/bin/markitdown ./assets/paper.pdf -o ./assets/paper.md
+   mkdir -p ./assets/pdf
+   mv /tmp/paper.pdf ./assets/pdf/
+   ~/.local/bin/markitdown ./assets/pdf/paper.pdf -o ./assets/pdf/paper.md
    ```
 
 ## Sci-Hub Mirrors

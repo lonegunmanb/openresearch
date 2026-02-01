@@ -72,10 +72,10 @@ Read and follow the workflow defined there. After login completes, remember to r
 
 | Source Type | How to Handle |
 |-------------|---------------|
-| Web page | Save URL, extract relevant text, note access timestamp |
+| Web page | Save URL, extract relevant text, note access timestamp. If saving HTML snapshot, save to `assets/web/` |
 | API response | Record endpoint, extract structured data, note query parameters |
 | Database query | Log query used, preserve record identifiers |
-| PDF/Document | Save file to `assets/`, then follow `.claude/skills/markitdown` to generate `.md` |
+| PDF/Document | Save file to `assets/pdf/`, then follow `.claude/skills/markitdown` to generate `.md` |
 | Image/Chart | Save to `assets/images/`, describe content in text |
 
 ### Step 5: Output Results
