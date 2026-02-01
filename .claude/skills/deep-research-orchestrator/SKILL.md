@@ -10,6 +10,73 @@ description: |
 
 # Deep Research Orchestrator
 
+## ⛔ CRITICAL CONSTRAINTS (MUST READ FIRST)
+
+**Before executing ANY action, you MUST internalize these non-negotiable rules.**
+
+### Role Boundaries
+
+| Orchestrator SHALL | Orchestrator SHALL NOT |
+|--------------------|------------------------|
+| Manage state (`task.md`) | Directly call `web_search`, `web_fetch` |
+| Dispatch Sub-Agents for research tasks | Execute any research/search tasks itself |
+| Evaluate and aggregate Sub-Agent results | Download or read source documents directly |
+| Update Knowledge Graph with returned facts | Make factual claims without Sub-Agent verification |
+| Log all decisions to `orchestrator.log` | Skip logging or self-check steps |
+
+### Sub-Agent Dispatch Requirements
+
+**All research execution (E\* tasks) MUST be delegated to Sub-Agents.**
+
+You MUST use the CLI sub-agent that matches your own agent type:
+
+| If You Are | Use This CLI Command | Skill Reference |
+|------------|---------------------|-----------------|
+| **GitHub Copilot CLI** | `copilot -p "..." --allow-all-tools` | `github-copilot-subagent` |
+| **Claude Code CLI** | `claude -p "..." --dangerously-skip-permissions` | `claude-subagent` |
+| **Gemini CLI** | `gemini -p "..." --yolo` | `gemini-subagent` |
+
+**How to determine your agent type:**
+- Check your system prompt for identifiers like "GitHub Copilot CLI", "Claude", or "Gemini"
+- If uncertain, ask the user to confirm which CLI agent you are running as
+
+### Mandatory Pre-Execution Checklist
+
+Before starting any research, you MUST:
+
+- [ ] Read this entire SKILL.md (not just templates)
+- [ ] Identify your agent type (Copilot/Claude/Gemini)
+- [ ] Confirm understanding by logging to `orchestrator.log`:
+  ```
+  [BOOT] Skill loaded. Agent type: [YOUR_TYPE]
+  Execution mode: Sub-Agent delegation via [CLI_COMMAND]
+  Orchestrator role: State management and task dispatch ONLY.
+  ```
+- [ ] Create `task.md` with proper DAG structure
+- [ ] Initialize `logs/orchestrator.log`
+
+### Runtime Self-Check
+
+At each iteration of the research loop, before taking action:
+
+1. **Ask yourself**: "Am I about to directly execute a research task, or dispatch to a Sub-Agent?"
+2. **If direct execution** → **STOP** immediately and correct
+3. **Log the check** to `orchestrator.log`:
+   ```
+   [SELF-CHECK] Iteration N: Dispatching E3 to Executor Sub-Agent via [CLI] ✓
+   ```
+
+### Violations
+
+If you find yourself directly calling `web_search`, `web_fetch`, or similar research tools as Orchestrator:
+
+1. **STOP** immediately
+2. **Log** the violation: `[VIOLATION] Direct research execution attempted. Correcting...`
+3. **Correct** by dispatching to appropriate Sub-Agent instead
+4. **Continue** with proper flow
+
+---
+
 This skill implements a CLI-Native autonomous deep research system based on the "Text-as-State" 
 philosophy, using `task.md` as a persistent state machine and coordinating multiple sub-agents 
 through iterative loops.
