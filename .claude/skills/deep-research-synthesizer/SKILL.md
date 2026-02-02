@@ -234,48 +234,46 @@ facts_count: [N]
 # [Research Topic]
 
 ## Executive Summary
+> **The Bottom Line**: [1-2 sentence powerful answer to the core question]
 
-[Core question answer in 3-5 sentences]
-[Key findings summary]
-[Overall confidence statement]
+[3-5 sentences narrative summary. Don't just list facts; tell the story of what the data implies. Connect the dots for the reader.]
 
----
-
-## 1. [Dimension 1]
-
-### Overview
-[Section introduction]
-
-### Findings
-[Detailed analysis with [SXX] citations]
-
-### Sub-Conclusions
-- [Point 1] [S01]
-- [Point 2] [S02][S03]
+**Confidence Assessment**: [Contextual statement about data reliability]
 
 ---
 
-## 2. [Dimension 2]
-[Continue pattern for all dimensions]
+## 1. [Dimension 1: Engaging Heading]
+*(e.g., instead of "Market Analysis", use "Market Dynamics: A Shift Towards Asia")*
+
+### The Core Insight
+[A strong opening paragraph stating the main trend or finding.]
+
+### Detailed Analysis
+[Narrative paragraphs weaving facts together. Use bolding for emphasis.]
+* **Key Driver**: [Detail] [S01]
+* **Counter-force**: [Detail] [S02]
+
+> **Strategic Note**: [Optional: A specific implication or "Aha!" moment derived from this section]
 
 ---
 
-## Key Findings
-
-1. **[Finding 1]** [S01][S02]
-2. **[Finding 2]** [S03]
-3. **[Finding 3]** [S04][S05]
+## 2. [Dimension 2: Engaging Heading]
+[Continue narrative pattern. Ensure smooth transition from previous section.]
 
 ---
 
-## Conflicting Data & Uncertainties
+## Key Findings & Strategic Implications
+*(Synthesize, don't just summarize)*
 
-### [Conflict Topic 1]
-> Source [S01] reports [X], while [S02] reports [Y]. 
-> This report adopts [X] based on [reasoning], but notes the discrepancy.
+1.  **[Insight Title]**: [Explanation of *why* this matters, supported by S01/S02]
+2.  **[Insight Title]**: [Explanation...]
 
-### [Conflict Topic 2]
-> [Similar treatment]
+---
+
+## Critical Uncertainties & Divergences
+*(Where the data fights back)*
+
+> While Source [S01] argues [X], Source [S02] presents a compelling case for [Y]. This report leans towards [X] because...
 
 ---
 
@@ -304,52 +302,47 @@ facts_count: [N]
 
 ---
 
-## Writing Guidelines
+## Narrative Strategy & Writing Guidelines
 
-### Audience Reminder
+### The "Analyst Persona"
+You are not a database dumper; you are a **top-tier Strategy Consultant**. Your goal is not just to transfer information, but to **facilitate understanding**.
+* **Don't** just say "A happened, then B happened."
+* **Do** say "A triggered B, which consequently reshaped C."
 
-**Your readers are humans, not machines.** The report must be:
-- **Accessible**: Write for intelligent non-experts; avoid jargon or explain it immediately
-- **Engaging**: Transform dry facts into a coherent narrative that flows naturally
-- **Digestible**: Break complex ideas into smaller, logical steps before synthesizing
+### 1. Narrative Flow & Connective Tissue
+* **The "So What?" Test**: Every paragraph must answer "Why does this matter?" Do not leave data points stranding.
+* **Transitions**: Use transitional phrases to connect dimensions. (e.g., "While the economic indicators are strong, the geopolitical landscape tells a different story...")
+* **Active Voice**: Prefer "Regulatory changes drove the market decline [S01]" over "The market decline was driven by regulatory changes."
 
-### Tone & Style
+### 2. Visual Rhythm & Readability
+* **Break the Wall of Text**: Never write more than 5 lines of text without a visual break (bullet point, bold key phrase, or header).
+* **Highlighting**: Use **bold** for key concepts, numbers, or entities—but use it sparingly (max 1-2 per paragraph) to guide the scanning eye.
+* **Blockquotes for Impact**: Use `> Blockquotes` for:
+    * Crucial "Aha!" insights.
+    * Direct, high-impact quotes from sources.
+    * Identifying major conflicts/risks.
 
-1. **Analytical and objective** - Write as a professional research analyst
-2. **No emotional language** - Avoid superlatives, hype, or promotional tone
-3. **Precise attribution** - Every claim traced to specific source
-4. **Explicit uncertainty** - State confidence levels, don't hide gaps
-5. **Reader-friendly** - Prioritize clarity over comprehensiveness; less is more
+### 3. Syntactic Variety
+* **Mix Sentence Lengths**: Combine short, punchy sentences for impact with longer, explanatory sentences for nuance.
+    * *Bad:* "The GDP grew by 5%. The inflation was 2%. The unemployment was 3%." (Robotic)
+    * *Good:* "While GDP posted a robust 5% growth [S01], inflation remained stubborn at 2% [S02]. Consequently, unemployment held steady at 3%." (Flowing)
 
-### Readability Principles
+### 4. Handling Data & Citations
+* **Weave, Don't List**: Integrate citations naturally into the narrative.
+    * *Robotic:* "Fact 1 [S1]. Fact 2 [S2]."
+    * *Natural:* "Despite Toyota's claim of $500/kg costs [S01], competitors like CATL are aggressively targeting the $50/kg breakeven point [S02], signaling a looming price war."
+* **Precision**: Use specific numbers, dates, and names. Avoid vague terms like "many," "recently," or "some experts" unless the source is vague.
 
-| Principle | Implementation |
-|-----------|----------------|
-| **深入浅出 (Deep-in, Simple-out)** | Understand deeply, explain simply. Start with the "why" before the "what" |
-| **Layered Explanation** | Lead with the conclusion, then provide supporting details progressively |
-| **Concrete Examples** | Illustrate abstract concepts with real-world analogies or data points |
-| **Logical Flow** | Each paragraph should connect to the next; use transition sentences |
-| **Visual Breaks** | Use headers, bullet points, and whitespace to reduce cognitive load |
-| **Active Voice** | Prefer "Toyota developed X" over "X was developed by Toyota" |
-| **Short Sentences** | Complex ideas require simple syntax; aim for 15-25 words per sentence |
+### 5. Tone Calibration
+* **Professional yet Accessible**: Use the vocabulary of a business journal (e.g., Harvard Business Review, The Economist).
+* **Objective but Opinionated on Evidence**: It is okay to say "The evidence strongly supports X" if the citations back it up.
+* **Avoid "Fluff"**: No "In today's fast-paced world..." or "In conclusion..." fillers. Get straight to the point.
 
-### Language Patterns
-
-| Use | Avoid |
-|-----|-------|
-| "According to [S01]..." | "It is well known that..." |
-| "Data suggests..." | "Obviously..." |
-| "[S01] reports X, while [S02] indicates Y" | "The answer is definitely X" |
-| "Current evidence is insufficient to determine..." | Speculation without sources |
-
-### Cognitive Compression
-
-Transform high-entropy input (scattered facts) into low-entropy output (structured narrative):
-
-- **Deduplicate**: Merge similar facts from multiple sources
-- **Prioritize**: Lead with most authoritative/recent data
-- **Hierarchize**: Organize from general to specific
-- **Synthesize**: Draw connections across dimensions
+### Cognitive Transformation (Input -> Output)
+* **Input**: Scattered facts, dry statistics, conflicting dates.
+* **Output**: A cohesive story.
+    * *Instead of:* "Source A says sky is blue. Source B says sky is azure."
+    * *Write:* "Consensus across sources confirms the sky's azure hue [S01][S02], ruling out earlier theories of grey overcast."
 
 ---
 
