@@ -1,502 +1,289 @@
 ---
 name: deep-research-orchestrator
 description: |
-  Orchestrate autonomous deep research workflows following the CLI-Native Deep Research architecture. 
-  Use this skill when users request to: (1) Start a deep research investigation on any topic, 
-  (2) Conduct comprehensive multi-source analysis, (3) Generate research reports with proper citations,
-  (4) Perform iterative information gathering with quality control. This skill acts as the Root 
-  Orchestrator, managing the entire research lifecycle from planning to final report synthesis.
+  **[MANDATORY]** MUST invoke for ANY deep research task. Never use web_search/web_fetch directly.
+  Triggers: "deep research", "comprehensive analysis", "research report", "investigate", "in-depth study"
+  Role: Root Orchestrator - Planning → Execution → Reflection → Synthesis
 ---
 
 # Deep Research Orchestrator
 
-## ⛔ CRITICAL CONSTRAINTS (MUST READ FIRST)
+## ⛔ CRITICAL CONSTRAINTS
 
-**Before executing ANY action, you MUST internalize these non-negotiable rules.**
+**⚠️ RESEARCH ROOT = CURRENT WORKING DIRECTORY.**
+- All research artifacts (`task.md`, `report.md`, `assets/`, `logs/`) MUST be created in CWD.
+- These files are **NOT session state** — they are persistent outputs that downstream automation pipelines depend on.
+- If placed elsewhere, automated post-processing will fail to locate them.
+- Never create a new subdirectory or use system provided directory for research outputs.
 
 ### Role Boundaries
 
-| Orchestrator SHALL | Orchestrator SHALL NOT |
-|--------------------|------------------------|
-| Manage state (`task.md`) | Directly call `web_search`, `web_fetch` |
-| Dispatch Sub-Agents for research tasks | Execute any research/search tasks itself |
-| Evaluate and aggregate Sub-Agent results | Download or read source documents directly |
-| Update Knowledge Graph with returned facts | Make factual claims without Sub-Agent verification |
-| Log all decisions to `orchestrator.log` | Skip logging or self-check steps |
+**⚠️ Your context window is precious.** Delegate concrete work to Sub-Agents to preserve your own context space.
 
-### Sub-Agent Dispatch Requirements
+**SHALL NOT:**
+- ❌ Directly call `web_search` / `web_fetch`
+- ❌ Execute research tasks itself
+- ❌ Skip logging
 
-**All research execution (E\* tasks) MUST be delegated to Sub-Agents.**
+**SHALL:**
+- ✅ Manage state file (`task.md`)
+- ✅ Dispatch Sub-Agents to execute tasks
+- ✅ Update Knowledge Graph
+- ✅ Log to `orchestrator.log`
 
-You MUST use the CLI sub-agent that matches your own agent type:
+### Sub-Agent CLI Commands
 
-| If You Are | Use This CLI Command | Skill Reference |
-|------------|---------------------|-----------------|
-| **GitHub Copilot CLI** | `copilot -p "..." --allow-all-tools` | `github-copilot-subagent` |
-| **Claude Code CLI** | `claude -p "..." --dangerously-skip-permissions` | `claude-subagent` |
-| **Gemini CLI** | `gemini -p "..." --yolo` | `gemini-subagent` |
+| Agent Type | CLI Command |
+|------------|-------------|
+| GitHub Copilot | `copilot -p "..." --allow-all-tools` |
+| Claude Code | `claude -p "..." --dangerously-skip-permissions` |
+| Gemini | `gemini -p "..." --yolo` |
 
-**How to determine your agent type:**
-- Check your system prompt for identifiers like "GitHub Copilot CLI", "Claude", or "Gemini"
-- If uncertain, ask the user to confirm which CLI agent you are running as
+**⚠️ CRITICAL: How to Dispatch Sub-Agents**
 
-### Mandatory Pre-Execution Checklist
+When running as Orchestrator inside a CLI session, choose the appropriate dispatch method:
 
-Before starting any research, you MUST:
+#### Option A: Parallel Execution (Recommended for Multiple Tasks)
 
-- [ ] Read this entire SKILL.md (not just templates)
-- [ ] Identify your agent type (Copilot/Claude/Gemini)
-- [ ] Confirm understanding by logging to `orchestrator.log`:
-  ```
-  [BOOT] Skill loaded. Agent type: [YOUR_TYPE]
-  Execution mode: Sub-Agent delegation via [CLI_COMMAND]
-  Orchestrator role: State management and task dispatch ONLY.
-  ```
-- [ ] Create `task.md` with proper DAG structure
-- [ ] Initialize `logs/orchestrator.log`
+Use `run_in_terminal` with `isBackground: true` to launch multiple sub-agents in parallel, then poll for completion:
+
+```
+Step 1: Launch sub-agents in parallel (call run_in_terminal multiple times in same block)
+  - run_in_terminal(command: "copilot -p '...' --allow-all-tools", isBackground: true) → returns terminal_id_1
+  - run_in_terminal(command: "copilot -p '...' --allow-all-tools", isBackground: true) → returns terminal_id_2
+
+Step 2: Poll for results using get_terminal_output(id: terminal_id_X)
+  - Check periodically until sub-agents complete
+  - Sub-agents should write results to task.md which orchestrator can read
+```
+
+#### Option B: Sequential Execution (Single Task)
+
+Use `run_in_terminal` with `isBackground: false` to block until completion:
+```
+run_in_terminal(command: "copilot -p '...' --allow-all-tools", isBackground: false)
+```
+
+#### Option C: Use runSubagent Tool (If Available)
+
+The `runSubagent` tool can dispatch autonomous agents. Multiple calls in the same block run in parallel:
+```
+runSubagent(prompt: "Read .claude/skills/deep-research-executor/SKILL.md... TASK: ...", description: "Research X")
+```
+
+**❌ WRONG** — Do NOT use:
+- PowerShell: `Start-Process` (returns PID immediately, no output capture)
+- Bash: `command &` without proper wait/output handling
+- Background jobs without proper result collection
+
+**Platform-Specific Notes**:
+
+| Platform | Parallel Pattern | Wait Pattern |
+|----------|------------------|--------------|
+| PowerShell | Multiple `run_in_terminal` calls with `isBackground: true` | `get_terminal_output(id)` |
+| Bash | Multiple `run_in_terminal` calls with `isBackground: true` | `get_terminal_output(id)` |
+
+For **Bash** specifically, if you must use shell-level parallelism:
+```bash
+# Launch in background and capture PIDs
+copilot -p "..." --allow-all-tools > /tmp/agent1.log 2>&1 & PID1=$!
+copilot -p "..." --allow-all-tools > /tmp/agent2.log 2>&1 & PID2=$!
+
+# Wait for all and check results
+wait $PID1 $PID2
+cat /tmp/agent1.log /tmp/agent2.log
+```
+
+However, **prefer using the agent tools** (`run_in_terminal`, `runSubagent`) over raw shell commands, as they provide better output capture and status tracking.
+
+**⚠️ MANDATORY: Sub-Agent Prompt Template**
+
+When dispatching Sub-Agent via `-p "..."`, the prompt **MUST** include:
+1. **Skill file instruction**: Tell agent to read the corresponding SKILL.md first
+2. **Logging reminder**: Explicitly remind agent to write logs
+
+```
+-p "FIRST: Read .claude/skills/[SKILL_NAME]/SKILL.md and follow ALL instructions.
+    TASK: [Your task description here]
+    REMINDER: Log all actions to logs/[agent_type].log before execution.
+    WORKING_DIR: [ABSOLUTE_PATH]"
+```
+
+Example for Executor:
+```bash
+claude -p "FIRST: Read .claude/skills/deep-research-executor/SKILL.md and follow ALL instructions.
+TASK: Research [topic] from sources [S1, S2]. Extract facts for dimensions [D1, D2].
+REMINDER: Log all actions to logs/executor.log before execution. Never skip logging.
+WORKING_DIR: /path/to/research" --dangerously-skip-permissions
+```
+
+### Pre-Execution Checklist
+1. Read entire SKILL.md
+2. Identify agent type & log: `[BOOT] Agent: [TYPE], Mode: Sub-Agent delegation ONLY`
+3. Create `task.md` + init `logs/orchestrator.log`
 
 ### Runtime Self-Check
-
-At each iteration of the research loop, before taking action:
-
-1. **Ask yourself**: "Am I about to directly execute a research task, or dispatch to a Sub-Agent?"
-2. **If direct execution** → **STOP** immediately and correct
-3. **Log the check** to `orchestrator.log`:
-   ```
-   [SELF-CHECK] Iteration N: Dispatching E3 to Executor Sub-Agent via [CLI] ✓
-   ```
-
-### Violations
-
-If you find yourself directly calling `web_search`, `web_fetch`, or similar research tools as Orchestrator:
-
-1. **STOP** immediately
-2. **Log** the violation: `[VIOLATION] Direct research execution attempted. Correcting...`
-3. **Correct** by dispatching to appropriate Sub-Agent instead
-4. **Continue** with proper flow
+Each iteration: "Am I dispatching to Sub-Agent?" If direct execution → STOP → Log `[VIOLATION]` → Correct
 
 ---
 
-This skill implements a CLI-Native autonomous deep research system based on the "Text-as-State" 
-philosophy, using `task.md` as a persistent state machine and coordinating multiple sub-agents 
-through iterative loops.
+## Audit Log Protocol
 
-## Audit Log Requirement
+**File**: `logs/orchestrator.log` — Log BEFORE any tool/dispatch/state change.
 
-**Maintain `logs/orchestrator.log` throughout the entire research lifecycle.**
+**Format**: `[TIMESTAMP] [LEVEL] [TYPE] [ITER] | summary` + fields
 
-Every decision and action must be logged for traceability and post-hoc improvement.
+| Type | Trigger | Fields |
+|------|---------|--------|
+| `BOOT` | Start | agent_type |
+| `DISPATCH` | Sub-agent | task_id, method |
+| `AGENT_DONE` | Return | task_id, facts, sources |
+| `STATE_WRITE` | Edit task.md | changes |
+| `VIOLATION` | Unlogged action | correction |
+| `REFLECTION` | Quality check | score, gaps, recommendation |
 
-### Log Entry Format
-
-```
-================================================================================
-[YYYY-MM-DD HH:MM:SS] [ENTRY_TYPE] [ITERATION]
-================================================================================
-
-[Content]
-
---------------------------------------------------------------------------------
-```
-
-### Entry Types
-
-| Type | When to Log | Example Content |
-|------|-------------|-----------------|
-| `PLAN_GENERATED` | After creating research plan | Plan summary, dimensions, estimated iterations |
-| `PLAN_APPROVED` | User approves plan | User response, any modifications |
-| `TASK_CREATED` | task.md initialized | Mission ID, initial DAG structure |
-| `DECISION` | Any orchestration decision | "Chose to dispatch S1 because dependencies met" |
-| `DISPATCH` | Sub-agent task delegation | Task ID, agent type, task description |
-| `RESULT` | Sub-agent returns | Facts extracted, sources found, files saved |
-| `STATE_UPDATE` | task.md modified | What changed: DAG status, Knowledge Graph additions |
-| `REFLECTION` | Quality check performed | Completeness score, gaps found, conflicts detected |
-| `STATUS_CHANGE` | State transition | "RESEARCHING -> REFLECTING", reason |
-| `ERROR` | Any error encountered | Error description, recovery action taken |
-| `COMPLETED` | Research finished | Final stats: iterations, sources, facts collected |
-
-### Logging Commands
-
-At the start of orchestration, initialize the log:
-
-```
-================================================================================
-[2024-05-20 10:00:00] [ORCHESTRATOR_START] [0]
-================================================================================
-
-Mission: DR-20240520-001
-Topic: [Research topic]
-Max Iterations: 50
-
---------------------------------------------------------------------------------
-```
-
-Log every decision with reasoning:
-
-```
-================================================================================
-[2024-05-20 10:05:32] [DECISION] [1]
-================================================================================
-
-Decision: Dispatch search task S1
-Reasoning: P1 (intent decomposition) completed, S1 dependencies satisfied
-Next Action: Invoke Executor Agent for web search on "sulfide electrolyte costs"
-
---------------------------------------------------------------------------------
-```
-
-### Log Best Practices
-
-1. **Log before action**: Record decision before executing
-2. **Log after result**: Record outcome immediately after receiving
-3. **Include reasoning**: Always explain WHY, not just WHAT
-4. **Preserve evidence chain**: Reference task IDs and fact IDs
-5. **Log errors immediately**: Include stack traces if available
+Every 5 iterations: `[LOG_AUDIT]` — if coverage < 90%, add `[LATE_LOG]`
 
 ---
 
-## Core Workflow
+## Workflow Phases
 
-Deep research involves these phases:
+**PLANNING → APPROVAL → RESEARCHING → REFLECTING → SYNTHESIZING → COMPLETED**
 
-1. **PLANNING**: Generate research plan for user review
-2. **APPROVAL**: User reviews and approves/modifies the plan
-3. **RESEARCHING**: Execute search and reading tasks via sub-agents
-4. **REFLECTING**: Evaluate information completeness and quality
-5. **SYNTHESIZING**: Generate the final report with citations
-6. **COMPLETED**: Deliver `report.md` to user
+### Phase 1: Planning
 
-## Phase 1: Planning (User Interaction Required)
-
-When user requests deep research on a topic:
-
-1. Analyze the research question to identify:
-   - Core question and sub-questions
-   - Required dimensions (e.g., technical, market, policy)
-   - Potential authoritative sources
-   - Constraints and scope boundaries
-
-2. Present a **Research Plan** for user approval:
-
+Present Research Plan for approval:
 ```markdown
 # Research Plan: [Topic]
-
-## Core Question
-[Main research question]
-
-## Sub-Questions (DAG)
-- [ ] Q1: [First sub-question] (Priority: P1)
-- [ ] Q2: [Second sub-question] (Priority: P1, DependsOn: Q1)
-- [ ] Q3: [Third sub-question] (Priority: P2)
-...
-
-## Research Dimensions
-1. [Dimension 1]: [What to investigate]
-2. [Dimension 2]: [What to investigate]
-...
-
-## Expected Sources
-- [ ] Academic papers / journals
-- [ ] Official reports / white papers
-- [ ] News and industry analysis
-- [ ] Other: [specify]
-
-## Constraints
-- Time scope: [e.g., data from 2024 onwards]
-- Geographic scope: [e.g., Global / China-US-Japan comparison]
-- Source requirements: [e.g., no unverified social media]
-
-## Estimated Iterations
-~[N] research cycles
-
----
-**Do you approve this plan? (yes/no/modify)**
+## Core Question / Sub-Questions (DAG with Priority & Dependencies)
+## Dimensions / Expected Sources / Constraints / Estimated Iterations
+**Approve? (yes/no/modify)**
 ```
 
-3. Wait for user response:
-   - **"yes"**: Proceed to create `task.md` and begin research
-   - **"no"**: Ask for clarification or end task
-   - **"modify"**: Update plan based on feedback and re-present
+### Phase 2: Initialize (After User Approves)
 
-## Phase 2: Initialize Task State
+**Upon user approval ("yes")**, before creating any files:
 
-After approval, create the research workspace:
-
-1. Create `task.md` using the template at `assets/task-template.md`
-2. Populate template variables with approved plan content:
-   - `{{TOPIC}}`, `{{CORE_QUESTION}}` - from research plan
-   - `{{DIMENSIONS_TABLE}}` - research dimensions as markdown table rows
-   - `{{TIME_SCOPE}}`, `{{GEO_SCOPE}}`, etc. - from constraints
-   - `{{DAG_SEARCH_TASKS}}`, `{{DAG_READ_TASKS}}` - from approved DAG
-   - Set `status: "RESEARCHING"`
-3. Create required directories if not exist:
-   - `assets/web/` - HTML snapshots
-   - `assets/pdf/` - Downloaded PDFs
-   - `assets/images/` - Extracted charts
-   - `assets/audio/` - Audio files
-   - `assets/ebook/` - Other formats
-   - `logs/` - Execution logs
-4. Initialize `logs/orchestrator.log` with ORCHESTRATOR_START entry
-
-## Phase 3: Research Loop (The Ralph Loop)
-
-Execute the main research loop:
-
-```
-while status != "COMPLETED" and status != "ERROR" and iteration < max_iterations:
-    1. Read task.md state
-    2. Find next executable task (dependencies satisfied)
-    3. Dispatch to appropriate sub-agent
-    4. Update Knowledge Graph with findings
-    5. Update Source Registry with citations
-    6. Mark task complete in DAG
-    7. Increment iteration counter
-    8. Check stopping criteria
-```
-
-### Dispatching Sub-Agents
-
-Based on task type, dispatch appropriate prompts. See `references/agent-prompts.md` for full prompts.
-
-| Task Type | Agent Role | Key Responsibilities |
-|-----------|------------|---------------------|
-| Plan (P*) | Planner Agent | Task decomposition, DAG restructuring |
-| Execute (E*) | Executor Agent | Search + Read cycle: discover sources, deep read, extract facts |
-| Conflict (C*) | Reflector Agent | Cross-source comparison, credibility assessment |
-
-### Updating task.md
-
-After each sub-agent returns:
-
-1. **Append** facts to Knowledge Graph (never overwrite):
-   ```markdown
-   [Fact-XXX] [Extracted fact statement]
-   - Source: [SXX]
-   - Confidence: High/Medium/Low
-   - Raw_File: assets/[path]
+1. **Announce to user** the following details:
+   ```
+   ✅ Research plan approved. Initializing...
+   
+   ⚠️ CRITICAL CONSTRAINTS (reminder):
+   - All outputs go to CURRENT WORKING DIRECTORY — not session state
+   - Downstream automation depends on these file locations
+   - I will NOT execute research directly — only dispatch Sub-Agents
+   - All actions will be logged to logs/orchestrator.log
+   
+   📂 Working Directory: [ABSOLUTE_PATH_OF_CWD]
+   
+   📁 Files & folders to be created:
+   - task.md          — Research state & knowledge graph
+   - report.md        — Final research report (upon completion)
+   - assets/web/      — Cached web pages
+   - assets/pdf/      — Downloaded PDFs
+   - assets/images/   — Downloaded images
+   - assets/audio/    — Audio files
+   - assets/ebook/    — E-books
+   - logs/            — Orchestrator logs
+   
+   🔬 Research Workflow:
+   PLANNING → APPROVAL → RESEARCHING → REFLECTING → SYNTHESIZING → COMPLETED
+   
+   Current: ✅ APPROVAL complete
+   Next: → RESEARCHING (dispatching Sub-Agents for each task)
+   
+   Starting research...
    ```
 
-2. **Append** to Source Registry:
-   ```markdown
-   | SXX | [URL] | [Title] | [Type] | [Date] | assets/[path] |
-   ```
+2. Create `task.md` from `assets/task-template.md`
+3. Create dirs: `assets/{web,pdf,images,audio,ebook}/`, `logs/`
+4. Set `status: "RESEARCHING"`
 
-3. **Update** DAG task status:
-   - Change `[ ]` to `[x]` for completed tasks
-   - Add new tasks if gaps discovered
-
-4. **Log** to Scratchpad:
-   ```markdown
-   - **Iteration N**: [What was done, what was found, what's next]
-   ```
-
-## Phase 4: Reflection Checkpoints
-
-Trigger reflection when:
-- All current DAG tasks marked complete
-- Iteration count reaches checkpoint (every 5 iterations)
-- Sub-agent reports conflicting information
-
-### Dispatching Reflector Agent
-
-When reflection is triggered, spawn a **Reflector Agent** to evaluate the current Knowledge Graph:
-
-```bash
-claude --print "You are a Reflector Agent for deep research quality control. Your task:
-
-[RESEARCH_TASK]: <core research question>
-[RESEARCH_DIMENSIONS]: <dimensions to cover>
-[KNOWLEDGE_GRAPH]: <current accumulated facts from task.md>
-[SOURCE_REGISTRY]: <current source list from task.md>
-
-Instructions:
-1. Read the entire Knowledge Graph
-2. Compare against the Research Task and Dimensions
-3. Perform the following checks:
-
-COMPLETENESS CHECK:
-- Can the core question be fully answered with current facts?
-- Are all research dimensions adequately covered?
-- Rate coverage: 0-100% for each dimension
-
-CONFLICT DETECTION:
-- Are there contradictory data points across sources?
-- For each conflict: note Fact IDs, sources, and nature of contradiction
-
-GAP ANALYSIS:
-- What information is still missing?
-- What questions remain unanswered?
-- Suggest specific search queries to fill gaps
-
-HALLUCINATION CHECK:
-- Does every fact have a valid [SXX] source reference?
-- Are there any claims without source attribution?
-
-Return format:
-## Reflection Report
-
-### Completeness Score
-- Overall: [X]%
-- Dimension 1: [Y]% - [status: Sufficient/Insufficient]
-- Dimension 2: [Z]% - [status: Sufficient/Insufficient]
-...
-
-### Conflicts Detected
-| Fact A | Fact B | Nature of Conflict | Suggested Resolution |
-|--------|--------|-------------------|---------------------|
-| [Fact-XXX] | [Fact-YYY] | [description] | [recommendation] |
-
-### Gaps Identified
-1. [Gap description] - Suggested query: [search query]
-2. [Gap description] - Suggested query: [search query]
-
-### Hallucination Check
-- Facts without sources: [list or 'None']
-- Invalid source references: [list or 'None']
-
-### Recommendation
-- Status: CONTINUE_RESEARCH | ADD_CONFLICT_TASKS | READY_FOR_SYNTHESIS
-- New tasks to add: [list of suggested DAG tasks]
-- Reasoning: [explanation]
-"
-```
-
-### Reflection Evaluation Criteria
-
-The Reflector Agent evaluates:
-
-1. **Completeness**: Can the core question be answered?
-2. **Conflicts**: Are there contradictory data points?
-3. **Gaps**: What information is still missing?
-4. **Hallucination Check**: Do all facts have source IDs?
-
-### Handling Reflector Results
-
-Based on Reflector Agent's recommendation:
-
-| Recommendation | Orchestrator Action |
-|----------------|---------------------|
-| `CONTINUE_RESEARCH` | Add suggested tasks to DAG, set `status: "RESEARCHING"` |
-| `ADD_CONFLICT_TASKS` | Create conflict resolution tasks (C*), set `status: "RESEARCHING"` |
-| `READY_FOR_SYNTHESIS` | Set `status: "SYNTHESIZING"` |
-
-### Logging Reflection
-
-Log the reflection outcome to `logs/orchestrator.log`:
+### Phase 3: Research Loop
 
 ```
-================================================================================
-[YYYY-MM-DD HH:MM:SS] [REFLECTION] [N]
-================================================================================
-
-Trigger: [All tasks complete / Checkpoint / Conflict reported]
-Completeness: [X]%
-Conflicts: [count]
-Gaps: [count]
-Hallucinations: [count]
-Recommendation: [CONTINUE_RESEARCH / ADD_CONFLICT_TASKS / READY_FOR_SYNTHESIS]
-Action Taken: [What orchestrator did in response]
-
---------------------------------------------------------------------------------
+while status not in ["COMPLETED","ERROR"] and iter < max:
+  1. Read task.md → 2. Find next task → 3. Dispatch Sub-Agent
+  4. Update Knowledge Graph/Source Registry → 5. Mark complete → 6. Check criteria
 ```
 
-## Phase 5: Synthesis
+**Sub-Agent Dispatch** (MUST specify skill path):
+
+| Task | Skill |
+|------|-------|
+| P* (Plan) | `.claude/skills/deep-research-orchestrator` |
+| E* (Execute) | `.claude/skills/deep-research-executor` |
+| C* (Conflict) | `.claude/skills/deep-research-reflector` |
+| Synthesis | `.claude/skills/deep-research-synthesizer` |
+
+**Updating task.md**:
+- Append facts: `[Fact-XXX] statement | Source: SXX | Confidence | Raw_File`
+- Append sources: `| SXX | URL | Title | Type | Date | path |`
+- Mark DAG `[x]`, log to Scratchpad
+
+### Phase 4: Reflection
+
+**Triggers**: All DAG tasks complete | Every 5 iterations | Conflict reported
+
+Dispatch Reflector Agent with: `[RESEARCH_TASK]`, `[DIMENSIONS]`, `[KNOWLEDGE_GRAPH]`, `[SOURCE_REGISTRY]`
+
+**Checks**: Completeness (0-100% per dimension) | Conflict Detection | Gap Analysis | Hallucination Check
+
+**Output**: Reflection Report with recommendation:
+| Recommendation | Action |
+|----------------|--------|
+| `CONTINUE_RESEARCH` | Add tasks, stay RESEARCHING |
+| `ADD_CONFLICT_TASKS` | Create C* tasks |
+| `READY_FOR_SYNTHESIS` | Set SYNTHESIZING |
+
+### Phase 5: Synthesis
 
 When `status: "SYNTHESIZING"`:
 
-1. Read entire Knowledge Graph
-2. Generate `report.md` following this structure:
-   ```markdown
-   # [Research Topic]
-   
-   ## Executive Summary
-   [Key findings in 3-5 sentences]
-   
-   ## 1. [Dimension 1]
-   [Analysis with inline citations like [S1][S2]]
-   
-   ## 2. [Dimension 2]
-   [Analysis with inline citations]
-   
-   ## Key Findings
-   - Finding 1 [S1]
-   - Finding 2 [S2][S3]
-   
-   ## Limitations & Caveats
-   [Known gaps, conflicting data, confidence levels]
-   
-   ## References
-   [Full citation list from Source Registry]
-   ```
+**Dispatch Synthesizer Agent with**:
+- `[ORIGINAL_USER_REQUEST]` — User's original research request (from task.md's Original Request field)
+- `[RESEARCH_TASK]` — Research topic and sub-questions
+- `[DIMENSIONS]` — Research dimensions
+- `[KNOWLEDGE_GRAPH]` — Collected facts and relationships
+- `[SOURCE_REGISTRY]` — Source registry
 
-3. For conflicting data, explicitly state:
-   > "Source [S1] reports X, while [S2] reports Y. Given [reasoning], this report adopts X."
+**⚠️ CRITICAL**: You MUST pass the user's original research request to the Synthesizer to ensure the final report:
+- Complies with any specific format, style, or structure requirements from the user
+- Covers all aspects explicitly requested by the user
+- Adheres to user-specified output constraints (e.g., language, length, target audience)
 
-4. Set `status: "COMPLETED"`
-5. Present `report.md` to user
-
-## Stopping Criteria
-
-Research terminates when ANY of:
-- All DAG tasks completed AND reflection confirms sufficiency
-- `max_iterations` reached (default: 50)
-- User manually intervenes
-- Unrecoverable error encountered
-
-## Error Handling
-
-When errors occur:
-1. Log error details to Scratchpad
-2. Attempt recovery (retry, alternative source)
-3. If unrecoverable, set `status: "ERROR"` and notify user
-
-## Human-in-the-Loop Touchpoints
-
-User intervention is expected at:
-1. **Initial plan approval** (mandatory)
-2. **Mid-research review** (optional, every 10 iterations)
-3. **Pre-synthesis review** (optional, before final report)
-4. **Error resolution** (when needed)
-
-## File Structure Reference
-
-```
-project-root/
-├── task.md                 # State machine (created from assets/task-template.md)
-├── report.md               # Final output (created at synthesis)
-├── assets/
-│   ├── web/                # HTML snapshots
-│   ├── pdf/                # Downloaded PDFs
-│   ├── images/             # Extracted charts
-│   ├── audio/              # Audio files
-│   └── ebook/              # Other formats
-└── logs/
-    ├── orchestrator.log    # Orchestrator decisions & actions (audit trail)
-    └── orchestrator.md     # Orchestrator reasoning log (thought stream)
+**Synthesizer Dispatch Example**:
+```bash
+claude -p "FIRST: Read .claude/skills/deep-research-synthesizer/SKILL.md and follow ALL instructions.
+ORIGINAL_USER_REQUEST: [Paste user's original research request here]
+TASK: Synthesize final report from collected facts and sources.
+KNOWLEDGE_GRAPH: [Facts]
+SOURCE_REGISTRY: [Sources]
+REMINDER: The final report MUST comply with the user's original request requirements above.
+WORKING_DIR: /path/to/research" --dangerously-skip-permissions
 ```
 
-### Skill Assets (Templates)
+**Report Generation**:
+1. Generate `report.md`: Executive Summary → Dimensions → Key Findings → Limitations → References
+2. For conflicts: "Source [S1] reports X, [S2] reports Y. Given [reasoning], adopting X."
+3. Set `status: "COMPLETED"`
 
-This skill provides templates in `.claude/skills/deep-research-orchestrator/assets/`:
+---
 
-| Template | Purpose |
-|----------|---------|
-| `research-plan-template.md` | Present research plan to user for approval |
-| `task-template.md` | Create task.md state machine after approval |
+## Stopping & Error
 
-## Quick Start Example
+**Stop when**: All tasks done + reflection sufficient | max_iterations (50) | User intervenes | Error
 
-**User**: "I want to do deep research on solid-state battery supply chain bottlenecks in 2025"
+**Errors**: Log → Retry → If unrecoverable: `status: "ERROR"` + notify user
 
-**Orchestrator Response**:
-1. Generate research plan covering:
-   - Raw materials (lithium, sulfide electrolytes)
-   - Manufacturing equipment
-   - Production processes
-   - Key players (Toyota, CATL, QuantumScape)
-   - Regional comparison (China, US, Japan)
-2. Present plan for approval
-3. On approval, create task.md with DAG
-4. Begin research loop
-5. Deliver report.md with citations
+## Human Touchpoints
+1. Plan approval (mandatory) | 2. Mid-research (optional, every 10 iter) | 3. Pre-synthesis (optional) | 4. Errors
+
+## File Structure (in CWD)
+```
+./task.md, report.md, assets/{web,pdf,images,audio,ebook}/, logs/{orchestrator.log,orchestrator.md}
+```
+
+**Templates** in `.claude/skills/deep-research-orchestrator/assets/`:
+`research-plan-template.md`, `task-template.md`
 

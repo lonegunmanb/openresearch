@@ -13,6 +13,142 @@ description: |
 
 # Deep Research Executor
 
+## 🔴 MANDATORY: Logging Requirements (MUST READ FIRST!)
+
+**Logging is mandatory! You MUST record detailed logs for every task execution.**
+
+### What Must Be Logged
+
+| Item | Description | Example |
+|------|-------------|---------|
+| **Reasoning** | Your thought process, decision rationale, strategy choices | "Choosing Google Scholar because academic papers are needed..." |
+| **Tool Calls** | Which tool was called, with what parameters | "Called mcp_playwright_browser_navigate to visit https://..." |
+| **Results** | Summary of tool output | "Search returned 10 results, 3 highly relevant..." |
+| **Saved Resources** | File paths of downloaded/saved content | "Saved: assets/pdf/Smith_AI_2025.pdf" |
+| **Issues Encountered** | Errors, obstacles, retry attempts | "Page load timeout, retrying attempt 2..." |
+
+### Log File Location
+
+- **Log Directory**: `logs/`
+- **Log File Naming**: `{task_id}.log` (named by task ID, one file per task)
+- **Examples**: `logs/E1.log`, `logs/E10.log`
+
+### Log Format Template
+
+```markdown
+# Execution Log: [Task ID]
+Start Time: YYYY-MM-DD HH:MM:SS
+
+## Reasoning
+- [Record your thought process and decisions]
+
+## Execution Steps
+
+### Step 1: [Step Description]
+- **Tool**: [Tool name]
+- **Parameters**: [Key parameters]
+- **Result**: [Result summary]
+- **Saved File**: [If any]
+
+### Step 2: ...
+
+## Saved Resources
+| File Path | Source | Description |
+|-----------|--------|-------------|
+| assets/web/xxx.md | https://... | Web page content |
+| assets/pdf/xxx.pdf | https://... | Paper PDF |
+
+## Summary
+- Status: [Success/Partial Success/Failed]
+- Key Findings: [List of key points]
+```
+
+### ⚠️ Resource Storage Rules
+
+**All retrieved web pages, ebooks, and PDF documents MUST be saved under the `assets/` directory:**
+
+| Resource Type | Storage Path |
+|---------------|--------------|
+| Web content | `assets/web/` |
+| PDF/Papers | `assets/pdf/` |
+| Ebooks | `assets/ebook/` |
+| Images | `assets/images/` |
+| Audio | `assets/audio/` |
+
+---
+
+## ⚠️ CRITICAL: Web Search Method (Read First!)
+
+**❌ NEVER use `web_search` tool** - This tool is PROHIBITED in this skill.
+
+**✅ ALWAYS use MCP Playwright tools for web searching:**
+
+### Alternative Search Engines
+- Google: `https://www.google.com`
+- Bing: `https://www.bing.com`
+- DuckDuckGo: `https://duckduckgo.com`
+- Google Scholar (for papers): `https://scholar.google.com`
+
+### Key MCP Playwright Tools for Research
+| Tool | Purpose |
+|------|--------|
+| `mcp_playwright_browser_navigate` | Go to URL |
+| `mcp_playwright_browser_snapshot` | Read page content (preferred over screenshot) |
+| `mcp_playwright_browser_type` | Enter text in fields |
+| `mcp_playwright_browser_click` | Click elements |
+| `mcp_playwright_browser_press_key` | Press keyboard keys |
+| `mcp_playwright_browser_navigate_back` | Go back |
+| `mcp_playwright_browser_tab_new` | Open new tab |
+| `mcp_playwright_browser_tab_list` | List open tabs |
+| `mcp_playwright_browser_tab_select` | Switch tabs |
+
+---
+
+## ⚠️ CRITICAL: File Storage Rules (Mandatory!)
+
+**ALL downloaded content MUST be saved under `assets/` directory:**
+
+| Content Type | Storage Path | Naming Convention |
+|--------------|--------------|-------------------|
+| Web pages (HTML/text) | `assets/web/` | `{domain}_{slug}_{date}.md` or `.html` |
+| PDF documents | `assets/pdf/` | `{author}_{title}_{year}.pdf` |
+| Academic papers | `assets/pdf/` | `{first_author}_{short_title}_{year}.pdf` |
+| YouTube transcripts | `assets/transcripts/` | `{channel}_{video_title}_{video_id}.txt` |
+| Images/Screenshots | `assets/images/` | `{source}_{description}_{date}.png` |
+| Ebooks | `assets/ebooks/` | `{author}_{title}.{ext}` |
+| Data files (CSV, JSON) | `assets/data/` | `{source}_{description}_{date}.{ext}` |
+| Audio files | `assets/audio/` | `{source}_{title}_{date}.{ext}` |
+
+### Storage Rules
+
+1. **NEVER save files outside `assets/` directory**
+2. **Create subdirectories if they don't exist** before saving
+3. **Use descriptive filenames** - avoid generic names like `file1.pdf`
+4. **Include date** in filename for time-sensitive content (format: `YYYYMMDD`)
+5. **Sanitize filenames** - replace spaces with `_`, remove special characters
+6. **Log every file save** with full path in audit log
+
+### Example File Saves
+
+```
+assets/
+├── web/
+│   ├── fed.gov_fomc-statement_20260115.md
+│   └── reuters_fed-rate-decision_20260201.html
+├── pdf/
+│   ├── Powell_Monetary_Policy_2026.pdf
+│   └── IMF_World_Economic_Outlook_2025.pdf
+├── transcripts/
+│   ├── FedReserve_FOMC-Press-Conference_abc123.txt
+│   └── BloombergTV_Market-Analysis_xyz789.txt
+├── images/
+│   └── fed.gov_dot-plot-chart_20260115.png
+└── data/
+    └── fred_interest-rates_20260201.csv
+```
+
+---
+
 You are the **Executor Agent** - the research coordinator in the deep research system. The Orchestrator 
 dispatches execution tasks (E*) to you. Complete them by **delegating work to sub-agents** and 
 aggregating their findings through iterative Plan->Dispatch->Evaluate cycles.
@@ -35,7 +171,7 @@ aggregating their findings through iterative Plan->Dispatch->Evaluate cycles.
 │ Sub-Executor │  │ Sub-Executor │  │  Specialist  │
 │   Batch 1    │  │   Batch 2    │  │    Agent     │
 │              │  │              │  │              │
-│ - Web search │  │ - Web search │  │ - YouTube    │
+│ - Playwright │  │ - Playwright │  │ - YouTube    │
 │ - Simple read│  │ - Simple read│  │ - Paper DL   │
 │ - Archive    │  │ - Archive    │  │ - Ebook+NLM  │
 └──────────────┘  └──────────────┘  └──────────────┘
@@ -44,37 +180,115 @@ aggregating their findings through iterative Plan->Dispatch->Evaluate cycles.
 **Key Principle**: You do NOT perform searches yourself. You orchestrate sub-agents to preserve 
 your context window for higher-level planning, evaluation, and decision-making.
 
-## Audit Log Requirement
+## ⛔ Audit Log Protocol (Mandatory)
 
-**Maintain `logs/executor-{{TASK_ID}}.log` for each assigned task.**
+**File**: `logs/executor-{{TASK_ID}}.log` — MUST be maintained for each assigned task. Without a log file you WILL NOT start your search.
 
-### Log Entry Format
+### Log-First Rule
+
+**You MUST write a log entry BEFORE executing any of the following:**
+- Calling any tool (`mcp_playwright_*`, `view`, `edit`, `powershell`, etc.)
+- Invoking any skill (`paper-downloader`, `youtube-transcript-analyzer`, `ebook-talk`, etc.)
+- Dispatching any sub-agent (Sub-Executor, Specialist)
+- Writing to result file
+
+**Violation Handling**: If you execute without prior logging:
+1. STOP immediately
+2. Write `[VIOLATION]` entry describing the unlogged action
+3. Add `[LATE_LOG]` entry retroactively
+4. Continue
+
+### Entry Format
 
 ```
-================================================================================
-[YYYY-MM-DD HH:MM:SS] [ENTRY_TYPE]
-================================================================================
-
-[Content]
-
---------------------------------------------------------------------------------
+[TIMESTAMP] [LEVEL] [TYPE] | summary
+  field1: value1
+  field2: value2
 ```
 
-### Entry Types
+**Levels**: `[!]` CRITICAL (errors, task status) | `[+]` NORMAL (tool calls, dispatches) | `[-]` DETAIL (optional)
 
-| Type | When to Log |
-|------|-------------|
-| `TASK_RECEIVED` | Task assigned, initial analysis |
-| `BATCH_PLANNED` | Batch N parameters: queries, k-value, scope |
-| `SUB_EXECUTOR_DISPATCHED` | Sub-executor spawned for batch N |
-| `SPECIALIST_DISPATCHED` | Specialist agent spawned (type, target) |
-| `SUB_AGENT_RETURNED` | Results received from sub-agent |
-| `SOURCE_REGISTERED` | Source added to consolidated list |
-| `CONFLICT_DETECTED` | Contradiction with existing Knowledge Graph |
-| `BATCH_EVALUATED` | End of batch: k-value, saturation_counter, new_info_found, decision |
-| `K_ADJUSTED` | k-value changed (e.g., 5 → 10), with reason |
-| `SATURATION_CHECK` | Saturation signal detected or reset |
-| `TASK_COMPLETED` | Final summary and status |
+### Mandatory Entry Types
+
+| Type | Trigger | Required Fields |
+|------|---------|-----------------|
+| `TASK_RECEIVED` | Task assigned | task_id, description, constraints |
+| `TOOL_CALL` | Before any tool | tool, params_summary, reason |
+| `TOOL_RESULT` | After tool returns | tool, result_summary, next |
+| `SKILL_INVOKE` | Before invoking skill | skill_name, target, reason |
+| `SKILL_RESULT` | After skill returns | skill_name, output_summary |
+| `DISPATCH` | Before sub-agent | agent_type, batch_id, prompt_length, method |
+| `AGENT_DONE` | After sub-agent returns | agent_id, duration, sources_found, status |
+| `SOURCE_REGISTERED` | Source added | source_id, url, type, tier |
+| `FACT_EXTRACTED` | Fact recorded | fact_id, source_ref, confidence |
+| `CONFLICT_DETECTED` | Contradiction found | fact_a, fact_b, nature |
+| `BATCH_EVALUATED` | Batch complete | batch_id, new_info, saturation_counter, decision |
+| `DEVIATION` | Non-standard method | expected, actual, justification |
+| `VIOLATION` | Unlogged action | action, correction |
+| `TASK_COMPLETED` | Task finished | batches, facts, sources, conflicts, output_file |
+
+### Examples
+
+```
+[2024-05-20 10:05:00] [+] TASK_RECEIVED | E1: Fed monetary policy analysis
+  task_id: E1
+  skill: deep-research-executor
+  description: Analyze Fed policy path, FOMC minutes, dot plot
+  constraints: 2024-2026 timeframe, official sources preferred
+
+[2024-05-20 10:05:15] [+] TOOL_CALL | mcp_playwright_browser_navigate to Google
+  tool: mcp_playwright_browser_navigate
+  url: "https://www.google.com"
+  reason: Initial search for official Fed statements
+
+[2024-05-20 10:05:16] [+] TOOL_CALL | mcp_playwright_browser_type search query
+  tool: mcp_playwright_browser_type
+  text: "Federal Reserve FOMC 2026 rate decision"
+  reason: Enter search query
+
+[2024-05-20 10:05:18] [+] TOOL_RESULT | mcp_playwright_browser_snapshot returned results
+  tool: mcp_playwright_browser_snapshot
+  results: 8 items visible, 3 from fed.gov (Tier-1)
+  next: click top 3 results
+
+[2024-05-20 10:06:00] [+] SKILL_INVOKE | paper-downloader for Fed working paper
+  skill: paper-downloader
+  target: DOI 10.xxxx/fed.2026.001
+  reason: Academic source for policy analysis
+
+[2024-05-20 10:07:30] [+] DISPATCH | Sub-Executor for batch 2
+  agent_type: sub-executor
+  batch_id: 2
+  method: task tool (DEVIATION: should use copilot CLI)
+  prompt_length: 892 chars
+  queries: ["Fed dot plot 2026", "Powell January statement"]
+
+[2024-05-20 10:12:00] [+] AGENT_DONE | Batch 2 sub-executor completed
+  agent_id: agent-3
+  duration: 270s
+  sources_found: 12
+  new_facts: 8
+  status: success
+  next: evaluate saturation
+
+[2024-05-20 10:12:05] [+] BATCH_EVALUATED | Batch 2 evaluation
+  batch_id: 2
+  new_info: yes
+  saturation_counter: 0 (reset)
+  tier1_sources: 5
+  decision: continue to batch 3
+
+[2024-05-20 10:25:00] [!] TASK_COMPLETED | E1 finished successfully
+  batches: 3
+  facts: 18
+  sources: 25 (10 Tier-1)
+  conflicts: 2
+  output_file: logs/E1_result.md
+```
+
+### Log Audit (End of Task)
+
+Before writing final result, verify log completeness.
 
 ---
 
@@ -128,7 +342,7 @@ Stop when: saturation_counter >= 2 AND all stop criteria met
 ┌─────────────────────────────────────────────────────────────┐
 │                 BATCH N: DISPATCH PHASE (You)               │
 │                                                             │
-│  1. Spawn Sub-Executor agent for web search + simple reads  │
+│  1. Spawn Sub-Executor agent for MCP Playwright search      │
 │  2. Spawn Specialist agents for complex retrieval:          │
 │     - YouTube Transcript Agent (video content)              │
 │     - Paper Downloader Agent (academic PDFs)                │
@@ -180,7 +394,7 @@ Stop when: saturation_counter >= 2 AND all stop criteria met
 
 | Agent Type | When to Use | Skill Reference |
 |------------|-------------|-----------------|
-| **Sub-Executor** | Each search batch (web search + simple page reads) | `deep-research-executor` (batch mode) |
+| **Sub-Executor** | Each search batch (MCP Playwright search + simple page reads) | `deep-research-executor` (batch mode) |
 | **YouTube Transcript** | Video content extraction | `youtube-transcript-analyzer` |
 | **Paper Downloader** | Academic paper retrieval | `paper-downloader` |
 | **Ebook + NotebookLM** | Book analysis via NotebookLM | `ebook-downloader` + `notebooklm` |
@@ -277,8 +491,11 @@ claude --print "You are a Sub-Executor for batch search. Your task:
   2. <query 2>
   3. <query 3>
 [K_VALUE]: <k>
-[SCOPE]: Web search + simple page reads only
-[ARCHIVE TO]: assets/web/, assets/pdf/
+[SCOPE]: MCP Playwright browser search + simple page reads only (NO web_search tool!)
+[STORAGE]: ALL files MUST be saved under assets/ directory:
+  - Web pages → assets/web/{domain}_{slug}_{date}.md
+  - PDFs → assets/pdf/{author}_{title}_{year}.pdf
+  - Images → assets/images/{source}_{desc}_{date}.png
 
 Instructions:
 1. Execute each query, retrieve top k results
@@ -290,10 +507,10 @@ Instructions:
    - PARTIAL/HIGHLY_RELEVANT → Continue to step 3
 3. For relevant results:
    - Create Content Index showing which sections are relevant
-   - If simple web page: read relevant sections and extract facts
+   - If simple web page: save to assets/web/, read relevant sections and extract facts
    - If PDF directly accessible: download to assets/pdf/
    - If complex (YouTube, paywall, ebook): DO NOT process, return URL for specialist
-4. Archive all relevant sources (skip irrelevant ones)
+4. Archive all relevant sources to assets/ (skip irrelevant ones)
 5. Return structured facts with [SXX] citations
 
 Return format:
@@ -334,10 +551,10 @@ claude --print "You are a YouTube Transcript Specialist. Your task:
 [VIDEO_URL]: <url>
 [RESEARCH_TASK]: <task description from Executor>
 [RESEARCH_CONTEXT]: <what information to extract>
-[ARCHIVE TO]: assets/transcripts/
+[STORAGE]: Save transcript to assets/transcripts/{channel}_{video_title}_{video_id}.txt
 
 Instructions:
-1. Use yt-dlp to download transcript
+1. Use yt-dlp to download transcript and SAVE to assets/transcripts/
 2. RELEVANCE ASSESSMENT:
    - Scan full transcript against [RESEARCH_TASK]
    - If IRRELEVANT: Return discard notice with reason, do not extract
@@ -378,10 +595,10 @@ claude --print "You are a Paper Downloader Specialist. Your task:
 [PAPER_URL]: <url or DOI>
 [RESEARCH_TASK]: <task description from Executor>
 [RESEARCH_CONTEXT]: <what information to extract>
-[ARCHIVE TO]: assets/pdf/
+[STORAGE]: Save PDF to assets/pdf/{first_author}_{short_title}_{year}.pdf
 
 Instructions:
-1. Download paper using paper-downloader skill
+1. Download paper using paper-downloader skill and SAVE to assets/pdf/
 2. If paywalled, attempt alternative access methods
 3. RELEVANCE ASSESSMENT:
    - Read abstract, introduction, and conclusion first
@@ -431,12 +648,13 @@ claude --print "You are an Ebook Analysis Specialist. Your task:
 [BOOK_TITLE]: <title>
 [RESEARCH_TASK]: <task description from Executor>
 [SEARCH_TERMS]: <what to search for in the book>
+[STORAGE]: Save ebook to assets/ebooks/{author}_{title}.{ext}
 [RESEARCH_QUESTIONS]: 
   1. <question 1>
   2. <question 2>
 
 Instructions:
-1. Use ebook-downloader to acquire the book
+1. Use ebook-downloader to acquire the book and SAVE to assets/ebooks/
 2. Upload to NotebookLM
 3. Query NotebookLM with research questions
 4. RELEVANCE ASSESSMENT:
@@ -670,13 +888,82 @@ Return findings in this exact structure:
 
 ---
 
+## Trusted Search Entry Points
+
+**CRITICAL**: All search operations MUST originate from trusted entry points only. Sub-agents are NOT allowed to use arbitrary search engines or follow links to untrusted domains without validation.
+
+### Mandatory Tool: Playwright MCP
+
+All browser-based search operations MUST use **Playwright MCP tools** to control the browser. Direct HTTP requests or other methods are NOT permitted for search operations.
+
+```
+Search Flow:
+1. Open browser via Playwright MCP
+2. Navigate to TRUSTED entry point (see list below)
+3. Execute search query
+4. Retrieve and validate results
+5. Only follow links to trusted domains or validate before proceeding
+```
+
+### Approved Search Entry Points
+
+| Entry Point | URL | Use Case |
+|-------------|-----|----------|
+| **Google Search** | `https://www.google.com` | General web search |
+| **DuckDuckGo** | `https://duckduckgo.com` | Privacy-focused general search |
+| **Google Scholar** | `https://scholar.google.com` | Academic papers and citations |
+| **PubMed** | `https://pubmed.ncbi.nlm.nih.gov` | Biomedical literature |
+| **arXiv** | `https://arxiv.org` | Preprints (physics, math, CS, etc.) |
+| **SSRN** | `https://www.ssrn.com` | Social science research |
+| **IEEE Xplore** | `https://ieeexplore.ieee.org` | Engineering and technology |
+| **ACM Digital Library** | `https://dl.acm.org` | Computing literature |
+| **Semantic Scholar** | `https://www.semanticscholar.org` | AI-powered academic search |
+| **JSTOR** | `https://www.jstor.org` | Academic journals and books |
+
+### Trusted Domain Suffixes
+
+Results from the following domain suffixes are automatically considered **high-trust**:
+
+| Suffix | Trust Level | Examples |
+|--------|-------------|----------|
+| `.gov` | **Tier-1** | Official government sources (data.gov, cdc.gov, sec.gov) |
+| `.edu` | **Tier-1** | Academic institutions (mit.edu, stanford.edu) |
+| `.org` (verified) | **Tier-1/2** | Established organizations (who.org, imf.org) |
+
+### Search Execution Protocol
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Sub-Executor Search Protocol                               │
+│                                                             │
+│  1. MUST use Playwright MCP tools (browser_navigate, etc.) │
+│  2. MUST start from approved entry point                    │
+│  3. For each search result:                                 │
+│     - Check domain against trusted suffixes (.gov, .edu)    │
+│     - If trusted → proceed to read                          │
+│     - If untrusted → validate source credibility first      │
+│  4. Log all search operations with entry point used         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Prohibited Actions
+
+| Action | Reason |
+|--------|--------|
+| Using unknown search engines | Cannot verify result quality |
+| Directly navigating to untrusted URLs | Bypass entry point validation |
+| Using non-Playwright HTTP tools for search | Lack of browser context and validation |
+| Following redirect chains blindly | May lead to untrusted destinations |
+
+---
+
 ## Tool Selection Strategy (For Sub-Agents)
 
 Sub-Executors and Specialists select tools based on content type:
 
 | Content Type | Tool/Method |
 |--------------|-------------|
-| Web search | MCP Playwright browser automation |
+| Web search | MCP Playwright browser automation (via trusted entry points) |
 | Simple web page | `fetch_webpage` or browser snapshot |
 | YouTube video | `yt-dlp` transcript extraction |
 | Academic paper | `paper-downloader` skill |

@@ -306,12 +306,32 @@ facts_count: [N]
 
 ## Writing Guidelines
 
+### Audience Reminder
+
+**Your readers are humans, not machines.** The report must be:
+- **Accessible**: Write for intelligent non-experts; avoid jargon or explain it immediately
+- **Engaging**: Transform dry facts into a coherent narrative that flows naturally
+- **Digestible**: Break complex ideas into smaller, logical steps before synthesizing
+
 ### Tone & Style
 
 1. **Analytical and objective** - Write as a professional research analyst
 2. **No emotional language** - Avoid superlatives, hype, or promotional tone
 3. **Precise attribution** - Every claim traced to specific source
 4. **Explicit uncertainty** - State confidence levels, don't hide gaps
+5. **Reader-friendly** - Prioritize clarity over comprehensiveness; less is more
+
+### Readability Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **深入浅出 (Deep-in, Simple-out)** | Understand deeply, explain simply. Start with the "why" before the "what" |
+| **Layered Explanation** | Lead with the conclusion, then provide supporting details progressively |
+| **Concrete Examples** | Illustrate abstract concepts with real-world analogies or data points |
+| **Logical Flow** | Each paragraph should connect to the next; use transition sentences |
+| **Visual Breaks** | Use headers, bullet points, and whitespace to reduce cognitive load |
+| **Active Voice** | Prefer "Toyota developed X" over "X was developed by Toyota" |
+| **Short Sentences** | Complex ideas require simple syntax; aim for 15-25 words per sentence |
 
 ### Language Patterns
 
