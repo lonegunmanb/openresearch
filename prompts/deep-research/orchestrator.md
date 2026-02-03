@@ -1,11 +1,3 @@
----
-name: deep-research-orchestrator
-description: |
-  **[MANDATORY]** MUST invoke for ANY deep research task. Never use web_search/web_fetch directly.
-  Triggers: "deep research", "comprehensive analysis", "research report", "investigate", "in-depth study"
-  Role: Root Orchestrator - Planning → Execution → Reflection → Synthesis
----
-
 # Deep Research Orchestrator
 
 ## ⛔ CRITICAL CONSTRAINTS
@@ -68,13 +60,14 @@ run_in_terminal(command: "copilot -p '...' --allow-all-tools", isBackground: fal
 
 The `runSubagent` tool can dispatch autonomous agents. Multiple calls in the same block run in parallel:
 ```
-runSubagent(prompt: "Read .claude/skills/deep-research-executor/SKILL.md... TASK: ...", description: "Research X")
+runSubagent(prompt: "Read prompts/deep-research/executor.md... TASK: ...", description: "Research X")
 ```
 
 **❌ WRONG** — Do NOT use:
 - PowerShell: `Start-Process` (returns PID immediately, no output capture)
 - Bash: `command &` without proper wait/output handling
 - Background jobs without proper result collection
+- General-purpose background sub agent
 
 **Platform-Specific Notes**:
 
@@ -99,11 +92,11 @@ However, **prefer using the agent tools** (`run_in_terminal`, `runSubagent`) ove
 **⚠️ MANDATORY: Sub-Agent Prompt Template**
 
 When dispatching Sub-Agent via `-p "..."`, the prompt **MUST** include:
-1. **Skill file instruction**: Tell agent to read the corresponding SKILL.md first
+1. **Skill file instruction**: Tell agent to read the corresponding prompt file first
 2. **Logging reminder**: Explicitly remind agent to write logs
 
 ```
--p "FIRST: Read .claude/skills/[SKILL_NAME]/SKILL.md and follow ALL instructions.
+-p "FIRST: Read prompts/deep-research/[AGENT_NAME].md and follow ALL instructions.
     TASK: [Your task description here]
     REMINDER: Log all actions to logs/[agent_type].log before execution.
     WORKING_DIR: [ABSOLUTE_PATH]"
@@ -111,14 +104,14 @@ When dispatching Sub-Agent via `-p "..."`, the prompt **MUST** include:
 
 Example for Executor:
 ```bash
-claude -p "FIRST: Read .claude/skills/deep-research-executor/SKILL.md and follow ALL instructions.
+claude -p "FIRST: Read prompts/deep-research/executor.md and follow ALL instructions.
 TASK: Research [topic] from sources [S1, S2]. Extract facts for dimensions [D1, D2].
 REMINDER: Log all actions to logs/executor.log before execution. Never skip logging.
 WORKING_DIR: /path/to/research" --dangerously-skip-permissions
 ```
 
 ### Pre-Execution Checklist
-1. Read entire SKILL.md
+1. Read entire prompt file
 2. Identify agent type & log: `[BOOT] Agent: [TYPE], Mode: Sub-Agent delegation ONLY`
 3. Create `task.md` + init `logs/orchestrator.log`
 
@@ -201,20 +194,33 @@ Present Research Plan for approval:
 
 ### Phase 3: Research Loop
 
-```
-while status not in ["COMPLETED","ERROR"] and iter < max:
-  1. Read task.md → 2. Find next task → 3. Dispatch Sub-Agent
-  4. Update Knowledge Graph/Source Registry → 5. Mark complete → 6. Check criteria
+**⚠️ CRITICAL: Orchestrator does NOT directly manage Executors.**
+
+Orchestrator dispatches a **Research Supervisor** sub-agent to handle the entire RESEARCHING phase. This preserves Orchestrator's context window for high-level coordination.
+
+**Orchestrator Action**:
+1. Dispatch ONE Research Supervisor sub-agent
+2. Wait for Supervisor to complete (all E* tasks done)
+3. Read updated `task.md` to get Knowledge Graph and Source Registry
+4. Proceed to REFLECTING phase
+
+**Research Supervisor Dispatch Example**:
+```bash
+claude -p "FIRST: Read prompts/deep-research/research-supervisor.md and follow ALL instructions.
+TASK: Execute the RESEARCHING phase. Dispatch and monitor ALL Executor agents (E* tasks) until completion.
+WORKING_DIR: /path/to/research" --dangerously-skip-permissions
 ```
 
-**Sub-Agent Dispatch** (MUST specify skill path):
+> 📄 **See**: [research-supervisor.md](prompts/deep-research/research-supervisor.md) for full Research Supervisor instructions.
 
-| Task | Skill |
-|------|-------|
-| P* (Plan) | `.claude/skills/deep-research-orchestrator` |
-| E* (Execute) | `.claude/skills/deep-research-executor` |
-| C* (Conflict) | `.claude/skills/deep-research-reflector` |
-| Synthesis | `.claude/skills/deep-research-synthesizer` |
+**Sub-Agent Dispatch** (MUST specify prompt file path):
+
+| Task | Prompt File |
+|------|-------------|
+| Research Supervisor | `prompts/deep-research/research-supervisor.md` |
+| E* (Execute) | `prompts/deep-research/executor.md` |
+| C* (Conflict) | `prompts/deep-research/reflector.md` |
+| Synthesis | `prompts/deep-research/synthesizer.md` |
 
 **Updating task.md**:
 - Append facts: `[Fact-XXX] statement | Source: SXX | Confidence | Raw_File`
@@ -254,7 +260,7 @@ When `status: "SYNTHESIZING"`:
 
 **Synthesizer Dispatch Example**:
 ```bash
-claude -p "FIRST: Read .claude/skills/deep-research-synthesizer/SKILL.md and follow ALL instructions.
+claude -p "FIRST: Read prompts/deep-research/synthesizer.md and follow ALL instructions.
 ORIGINAL_USER_REQUEST: [Paste user's original research request here]
 TASK: Synthesize final report from collected facts and sources.
 KNOWLEDGE_GRAPH: [Facts]
@@ -284,6 +290,5 @@ WORKING_DIR: /path/to/research" --dangerously-skip-permissions
 ./task.md, report.md, assets/{web,pdf,images,audio,ebook}/, logs/{orchestrator.log,orchestrator.md}
 ```
 
-**Templates** in `.claude/skills/deep-research-orchestrator/assets/`:
+**Templates** in `prompts/deep-research/assets/`:
 `research-plan-template.md`, `task-template.md`
-

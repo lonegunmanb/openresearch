@@ -1,16 +1,3 @@
----
-name: deep-research-executor
-description: |
-  Execute search and read tasks for deep research as a sub-agent. Use this skill when you are 
-  dispatched by the Root Orchestrator to complete an execution task (E*). Your role is the 
-  "Executor Agent" - the coordinator who: (1) Plans multi-batch search strategy, (2) Dispatches 
-  each search batch to a Sub-Executor agent, (3) Delegates complex content retrieval (papers, 
-  YouTube, ebooks) to specialized sub-agents, (4) Evaluates and aggregates findings from all 
-  sub-agents, (5) Detects conflicts with existing Knowledge Graph entries, (6) Returns findings 
-  in a standardized format for task.md updates. You operate in Plan->Dispatch->Evaluate cycles 
-  until the task objective is met or max cycles reached.
----
-
 # Deep Research Executor
 
 ## 🔴 MANDATORY: Logging Requirements (MUST READ FIRST!)
@@ -79,28 +66,52 @@ Start Time: YYYY-MM-DD HH:MM:SS
 
 ## ⚠️ CRITICAL: Web Search Method (Read First!)
 
-**❌ NEVER use `web_search` tool** - This tool is PROHIBITED in this skill.
+### Search Method Priority (Fallback Chain)
 
-**✅ ALWAYS use MCP Playwright tools for web searching:**
+Use the following fallback chain for web searching:
 
-### Alternative Search Engines
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Priority 1: MCP Playwright + Google (PREFERRED)           │
+│  - Navigate to https://www.google.com or                   │
+│    https://scholar.google.com                              │
+│  - Execute search query via browser automation             │
+│  - If SUCCESS → proceed with results                       │
+│  - If FAILED (blocked, timeout, CAPTCHA) → try Priority 2  │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ On failure
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Priority 2: MCP Serper-Search (FALLBACK)                  │
+│  - Use mcp_serper-search_google_search tool                │
+│  - Get search results via API                              │
+│  - ⚠️ IMPORTANT: For each result URL, MUST use MCP         │
+│    Playwright to visit the link and fetch actual content   │
+│  - If SUCCESS → proceed with results                       │
+│  - If FAILED → try Priority 3                              │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ On failure
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Priority 3: web_search Tool (LAST RESORT)                 │
+│  - Use only when Priority 1 and 2 both fail                │
+│  - Log reason for fallback to this method                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Search Engines (for Playwright)
 - Google: `https://www.google.com`
 - Bing: `https://www.bing.com`
 - DuckDuckGo: `https://duckduckgo.com`
 - Google Scholar (for papers): `https://scholar.google.com`
 
-### Key MCP Playwright Tools for Research
-| Tool | Purpose |
-|------|--------|
-| `mcp_playwright_browser_navigate` | Go to URL |
-| `mcp_playwright_browser_snapshot` | Read page content (preferred over screenshot) |
-| `mcp_playwright_browser_type` | Enter text in fields |
-| `mcp_playwright_browser_click` | Click elements |
-| `mcp_playwright_browser_press_key` | Press keyboard keys |
-| `mcp_playwright_browser_navigate_back` | Go back |
-| `mcp_playwright_browser_tab_new` | Open new tab |
-| `mcp_playwright_browser_tab_list` | List open tabs |
-| `mcp_playwright_browser_tab_select` | Switch tabs |
+### Serper-Search Usage Rules
+
+When using `mcp_serper-search_google_search`:
+1. Call the tool to get search results
+2. **MUST** use MCP Playwright to visit each result URL
+3. Fetch real-time page content via browser snapshot
+4. Do NOT rely solely on Serper snippet - always verify with actual page visit
 
 ---
 
@@ -127,25 +138,6 @@ Start Time: YYYY-MM-DD HH:MM:SS
 4. **Include date** in filename for time-sensitive content (format: `YYYYMMDD`)
 5. **Sanitize filenames** - replace spaces with `_`, remove special characters
 6. **Log every file save** with full path in audit log
-
-### Example File Saves
-
-```
-assets/
-├── web/
-│   ├── fed.gov_fomc-statement_20260115.md
-│   └── reuters_fed-rate-decision_20260201.html
-├── pdf/
-│   ├── Powell_Monetary_Policy_2026.pdf
-│   └── IMF_World_Economic_Outlook_2025.pdf
-├── transcripts/
-│   ├── FedReserve_FOMC-Press-Conference_abc123.txt
-│   └── BloombergTV_Market-Analysis_xyz789.txt
-├── images/
-│   └── fed.gov_dot-plot-chart_20260115.png
-└── data/
-    └── fred_interest-rates_20260201.csv
-```
 
 ---
 
@@ -182,7 +174,7 @@ your context window for higher-level planning, evaluation, and decision-making.
 
 ## ⛔ Audit Log Protocol (Mandatory)
 
-**File**: `logs/executor-{{TASK_ID}}.log` — MUST be maintained for each assigned task. Without a log file you WILL NOT start your search.
+**File**: `logs/{task_id}.log` — MUST be maintained for each assigned task. Without a log file you WILL NOT start your search.
 
 ### Log-First Rule
 
@@ -394,7 +386,7 @@ Stop when: saturation_counter >= 2 AND all stop criteria met
 
 | Agent Type | When to Use | Skill Reference |
 |------------|-------------|-----------------|
-| **Sub-Executor** | Each search batch (MCP Playwright search + simple page reads) | `deep-research-executor` (batch mode) |
+| **Sub-Executor** | Each search batch (MCP Playwright search + simple page reads) | `prompts/deep-research/executor.md` (batch mode) |
 | **YouTube Transcript** | Video content extraction | `youtube-transcript-analyzer` |
 | **Paper Downloader** | Academic paper retrieval | `paper-downloader` |
 | **Ebook + NotebookLM** | Book analysis via NotebookLM | `ebook-downloader` + `notebooklm` |
@@ -478,19 +470,36 @@ For IRRELEVANT sources, log the discard decision:
 
 ### Dispatching Sub-Executor (Batch Search)
 
-For each search batch, spawn a Sub-Executor agent:
+For each search batch, spawn a Sub-Executor agent.
+
+**Dispatch Workflow:**
+
+1. **Read the template** from: `prompts/deep-research/templates/sub-executor.md`
+2. **Render the template** by replacing placeholders with actual values:
+   - `[BATCH]` → batch number (e.g., `1`)
+   - `[RESEARCH_TASK]` → task description from Orchestrator
+   - `[RESEARCH_DIMENSIONS]` → key aspects to investigate
+   - `[QUERIES]` → the search queries for this batch
+   - `[K_VALUE]` → top-k results to retrieve
+3. **Execute dispatch** via terminal:
 
 ```bash
-claude --print "You are a Sub-Executor for batch search. Your task:
+copilot --allow-all -p "<rendered template content>"
+```
 
-[BATCH]: N
-[RESEARCH_TASK]: <task description from Executor>
-[RESEARCH_DIMENSIONS]: <key aspects to investigate>
+**Example (after rendering):**
+
+```bash
+copilot --allow-all -p "You are a Sub-Executor for batch search. Your task:
+
+[BATCH]: 1
+[RESEARCH_TASK]: Analyze Fed monetary policy outlook for 2025-2026
+[RESEARCH_DIMENSIONS]: rate path, inflation expectations, labor market
 [QUERIES]: 
-  1. <query 1>
-  2. <query 2>
-  3. <query 3>
-[K_VALUE]: <k>
+  1. Federal Reserve FOMC 2026 rate projections
+  2. Fed dot plot December 2025
+  3. Powell inflation target statement 2026
+[K_VALUE]: 5
 [SCOPE]: MCP Playwright browser search + simple page reads only (NO web_search tool!)
 [STORAGE]: ALL files MUST be saved under assets/ directory:
   - Web pages → assets/web/{domain}_{slug}_{date}.md
@@ -499,195 +508,100 @@ claude --print "You are a Sub-Executor for batch search. Your task:
 
 Instructions:
 1. Execute each query, retrieve top k results
-2. For each result, perform RELEVANCE ASSESSMENT:
-   - Read/scan the content
-   - Compare against [RESEARCH_TASK] and [RESEARCH_DIMENSIONS]
-   - Classify as: IRRELEVANT | PARTIAL | HIGHLY_RELEVANT
-   - IRRELEVANT → Discard, log reason, do not process further
-   - PARTIAL/HIGHLY_RELEVANT → Continue to step 3
-3. For relevant results:
-   - Create Content Index showing which sections are relevant
-   - If simple web page: save to assets/web/, read relevant sections and extract facts
-   - If PDF directly accessible: download to assets/pdf/
-   - If complex (YouTube, paywall, ebook): DO NOT process, return URL for specialist
-4. Archive all relevant sources to assets/ (skip irrelevant ones)
-5. Return structured facts with [SXX] citations
-
-Return format:
-## Batch N Results
-
-### Relevance Summary
-- Total results scanned: X
-- Discarded as irrelevant: Y
-- Partial relevance: Z
-- Highly relevant: W
-
-### Discarded Sources
-[List each discarded source with reason]
-
-### Sources Discovered
-| ID | URL | Type | Credibility | Relevance | Needs Specialist? |
-
-### Content Indices
-[For each PARTIAL or HIGHLY_RELEVANT source, include Content Index]
-
-### Facts Extracted
-[Fact-XXX] ...
-
-### Pending for Specialists
-- YouTube: [URLs]
-- Papers: [URLs] 
-- Ebooks: [URLs]
+...
+(rest of template content)
 "
 ```
 
 ### Dispatching Specialist Agents
 
+When Sub-Executor returns URLs requiring specialist handling, dispatch the appropriate specialist agent.
+
+**General Dispatch Workflow:**
+
+1. **Read the appropriate template** from `prompts/deep-research/templates/`
+2. **Render the template** with actual parameter values
+3. **Execute dispatch** via: `copilot --allow-all -p "<rendered template>"`
+
 #### YouTube Transcript Agent
 
-```bash
-claude --print "You are a YouTube Transcript Specialist. Your task:
+**Template location:** `prompts/deep-research/templates/youtube-transcript.md`
 
-[VIDEO_URL]: <url>
-[RESEARCH_TASK]: <task description from Executor>
-[RESEARCH_CONTEXT]: <what information to extract>
+**Parameters to render:**
+- `[VIDEO_URL]` → actual YouTube URL
+- `[RESEARCH_TASK]` → task description
+- `[RESEARCH_CONTEXT]` → what information to extract
+
+**Example dispatch:**
+
+```bash
+copilot --allow-all -p "You are a YouTube Transcript Specialist. Your task:
+
+[VIDEO_URL]: https://youtube.com/watch?v=abc123xyz
+[RESEARCH_TASK]: Analyze Fed monetary policy outlook for 2025-2026
+[RESEARCH_CONTEXT]: Extract any statements about interest rate expectations
 [STORAGE]: Save transcript to assets/transcripts/{channel}_{video_title}_{video_id}.txt
 
 Instructions:
 1. Use yt-dlp to download transcript and SAVE to assets/transcripts/
-2. RELEVANCE ASSESSMENT:
-   - Scan full transcript against [RESEARCH_TASK]
-   - If IRRELEVANT: Return discard notice with reason, do not extract
-   - If PARTIAL/HIGHLY_RELEVANT: Continue
-3. Create Content Index with relevant timestamps/sections
-4. Extract structured facts ONLY from relevant portions
-5. Assess source credibility (channel type)
-
-Return format:
-## YouTube Source: [Video Title]
-- Channel: [name] | Credibility: [Tier]
-- Duration: [time]
-- **Relevance**: IRRELEVANT | PARTIAL | HIGHLY_RELEVANT
-
-### Content Index (if relevant)
-| Timestamp | Topic | Relevance to Task |
-|-----------|-------|-------------------|
-| 00:00-02:30 | Introduction | Background context |
-| 05:15-08:40 | Core discussion on X | Directly addresses research question |
-| 12:00-15:30 | Case study Y | Supporting evidence |
-
-### Irrelevant Sections (Skipped)
-- 02:30-05:15: Sponsor message
-- 08:40-12:00: Off-topic tangent
-
-### Extracted Facts
-[Fact-XXX] [statement] (timestamp: MM:SS)
-- Source: [SXX]
-- Confidence: [level]
+...
+(rest of template content)
 "
 ```
 
 #### Paper Downloader Agent
 
-```bash
-claude --print "You are a Paper Downloader Specialist. Your task:
+**Template location:** `prompts/deep-research/templates/paper-downloader.md`
 
-[PAPER_URL]: <url or DOI>
-[RESEARCH_TASK]: <task description from Executor>
-[RESEARCH_CONTEXT]: <what information to extract>
+**Parameters to render:**
+- `[PAPER_URL]` → paper URL or DOI
+- `[RESEARCH_TASK]` → task description
+- `[RESEARCH_CONTEXT]` → what information to extract
+
+**Example dispatch:**
+
+```bash
+copilot --allow-all -p "You are a Paper Downloader Specialist. Your task:
+
+[PAPER_URL]: https://arxiv.org/abs/2501.12345
+[RESEARCH_TASK]: Analyze Fed monetary policy outlook for 2025-2026
+[RESEARCH_CONTEXT]: Extract methodology and key findings on rate forecasting
 [STORAGE]: Save PDF to assets/pdf/{first_author}_{short_title}_{year}.pdf
 
 Instructions:
 1. Download paper using paper-downloader skill and SAVE to assets/pdf/
-2. If paywalled, attempt alternative access methods
-3. RELEVANCE ASSESSMENT:
-   - Read abstract, introduction, and conclusion first
-   - Scan section headings and figures/tables
-   - Compare against [RESEARCH_TASK]
-   - If IRRELEVANT: Return discard notice, do not archive
-   - If PARTIAL/HIGHLY_RELEVANT: Continue
-4. Create Content Index pointing to relevant sections
-5. Extract key findings, methodology, data from relevant sections only
-6. Note citations for potential follow-up
-
-Return format:
-## Paper: [Title]
-- Authors: [names] | Year: [year]
-- DOI: [doi] | Local: assets/pdf/[filename]
-- **Relevance**: IRRELEVANT | PARTIAL | HIGHLY_RELEVANT
-
-### Content Index (if relevant)
-| Section | Relevance to Task | Key Content |
-|---------|-------------------|-------------|
-| Abstract | Overview | States main finding on X |
-| Section 2.3 | Methodology | Describes approach to Y |
-| Section 4.1 | Results | Quantitative data on Z |
-| Table 2 | Evidence | Comparison metrics |
-| Figure 5 | Visualization | Trend analysis |
-
-### Irrelevant Sections (Skipped)
-- Section 1: General literature review
-- Section 5: Limitations outside scope
-- Appendix A: Supplementary proofs
-
-### Extracted Facts
-[Fact-XXX] [statement] (Section X.X, p.XX)
-- Source: [SXX]
-- Confidence: High (peer-reviewed)
-
-### Key Citations to Follow
-- [citation 1] - Reason: [why this citation might be relevant]
+...
+(rest of template content)
 "
 ```
 
 #### Ebook + NotebookLM Agent
 
-```bash
-claude --print "You are an Ebook Analysis Specialist. Your task:
+**Template location:** `prompts/deep-research/templates/ebook-notebooklm.md`
 
-[BOOK_TITLE]: <title>
-[RESEARCH_TASK]: <task description from Executor>
-[SEARCH_TERMS]: <what to search for in the book>
+**Parameters to render:**
+- `[BOOK_TITLE]` → book title
+- `[RESEARCH_TASK]` → task description
+- `[SEARCH_TERMS]` → keywords to search for
+- `[RESEARCH_QUESTIONS]` → specific questions to ask NotebookLM
+
+**Example dispatch:**
+
+```bash
+copilot --allow-all -p "You are an Ebook Analysis Specialist. Your task:
+
+[BOOK_TITLE]: The Fed and the Future of Monetary Policy
+[RESEARCH_TASK]: Analyze Fed monetary policy outlook for 2025-2026
+[SEARCH_TERMS]: interest rate, inflation, quantitative tightening
 [STORAGE]: Save ebook to assets/ebooks/{author}_{title}.{ext}
-[RESEARCH_QUESTIONS]: 
-  1. <question 1>
-  2. <question 2>
+[RESEARCH_QUESTIONS]:
+  1. What does the author predict for Fed policy in 2025-2026?
+  2. How does the author assess inflation trajectory?
 
 Instructions:
 1. Use ebook-downloader to acquire the book and SAVE to assets/ebooks/
-2. Upload to NotebookLM
-3. Query NotebookLM with research questions
-4. RELEVANCE ASSESSMENT:
-   - Based on NotebookLM responses, assess book relevance to [RESEARCH_TASK]
-   - If responses indicate book does not address research topic: Mark IRRELEVANT
-   - If PARTIAL/HIGHLY_RELEVANT: Continue extraction
-5. Create Content Index pointing to relevant chapters/sections
-6. Extract structured facts from relevant responses only
-7. Note chapter/page references
-
-Return format:
-## Ebook: [Title]
-- Author: [name] | Local: assets/ebooks/[filename]
-- **Relevance**: IRRELEVANT | PARTIAL | HIGHLY_RELEVANT
-
-### Content Index (if relevant)
-| Chapter/Section | Relevance to Task | Key Topics |
-|-----------------|-------------------|------------|
-| Chapter 3 | Core material | Discusses X in depth |
-| Chapter 7.2 | Case study | Example of Y |
-| Appendix C | Reference data | Tables on Z |
-
-### Irrelevant Sections (Skipped)
-- Chapters 1-2: Historical background outside scope
-- Chapter 5: Unrelated subtopic
-
-### NotebookLM Findings
-[Fact-XXX] [statement] (Chapter X, p.XX)
-- Source: [SXX]
-- Confidence: [level]
-
-### Additional Insights
-- [insight from NotebookLM interaction]
+...
+(rest of template content)
 "
 ```
 
@@ -920,6 +834,8 @@ Search Flow:
 | **Semantic Scholar** | `https://www.semanticscholar.org` | AI-powered academic search |
 | **JSTOR** | `https://www.jstor.org` | Academic journals and books |
 
+Any source entry points appointed by user.
+
 ### Trusted Domain Suffixes
 
 Results from the following domain suffixes are automatically considered **high-trust**:
@@ -964,13 +880,11 @@ Sub-Executors and Specialists select tools based on content type:
 | Content Type | Tool/Method |
 |--------------|-------------|
 | Web search | MCP Playwright browser automation (via trusted entry points) |
-| Simple web page | `fetch_webpage` or browser snapshot |
+| Simple web page | browser snapshot |
 | YouTube video | `yt-dlp` transcript extraction |
 | Academic paper | `paper-downloader` skill |
 | Ebook | `ebook-downloader` + `notebooklm` |
-| Paywall/login | `human-assisted-browser` skill |
-
-**You (Executor) do not use these tools directly.** You dispatch sub-agents who use them.
+| Paywall | `bypass-paywall` skill |
 
 ---
 

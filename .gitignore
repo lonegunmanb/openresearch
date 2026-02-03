@@ -4,6 +4,7 @@ browser_profile/
 .skip-website/
 ./assets/
 logs/
+tmp/
 ### core template
 *.swp
 *.*~
@@ -12,6 +13,7 @@ project.lock.json
 *.pyc
 nupkg/
 task.md
+assets/
 
 # Rider
 .idea

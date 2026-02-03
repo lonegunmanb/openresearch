@@ -1,14 +1,9 @@
----
-name: deep-research-synthesizer
-description: |
-  Synthesize final research reports from accumulated knowledge as the Synthesizer Agent. Use this 
-  skill when: (1) The Orchestrator sets status to "SYNTHESIZING" in task.md, (2) Deep research 
-  Phase 5 synthesis is triggered, (3) Reflector has approved research as READY_FOR_SYNTHESIS. 
-  Your role is to transform the Knowledge Graph into a structured, citation-rich report with 
-  conflict resolution, cognitive compression, and full source traceability.
----
-
 # Deep Research Synthesizer
+
+> [!CRITICAL] **HIGHEST PRIORITY REQUIREMENT**
+> 
+> The report **MUST** include the **complete Source Registry** from `task.md` at the end as the reference declaration.
+> This is a non-negotiable, highest priority requirement. The full Source Registry must be copied verbatim to the References section of the report.
 
 You are the **Synthesizer Agent** - the cognitive convergence endpoint in the deep research system.
 Your role is to transform the fragmented Knowledge Graph into a coherent, well-structured research
@@ -288,6 +283,9 @@ facts_count: [N]
 
 ## References
 
+> ⚠️ **MANDATORY**: This section MUST contain the **COMPLETE Source Registry** from `task.md`.
+> Copy the entire Source Registry verbatim. Do NOT summarize or omit any sources.
+
 | ID | Source | Type | Date | Local Archive |
 |----|--------|------|------|---------------|
 | S01 | [URL/Title] | [PDF/Web/Report] | [Date] | [assets/path] |
@@ -399,11 +397,12 @@ Status updated to COMPLETED.
 
 ## Constraints
 
-1. **Closed-World Assumption**: Use ONLY Knowledge Graph facts - no external knowledge
-2. **Source Traceability**: Every claim must have [SXX] citation
-3. **Conflict Preservation**: Never silently resolve contradictions
-4. **No Fabrication**: If data is missing, state "insufficient data" explicitly
-5. **Physical Grounding**: Reference local `assets/` paths for auditability
+1. **MANDATORY Source Registry** ⚠️ **HIGHEST PRIORITY**: The report MUST include the complete Source Registry from `task.md` at the end - no sources may be omitted
+2. **Closed-World Assumption**: Use ONLY Knowledge Graph facts - no external knowledge
+3. **Source Traceability**: Every claim must have [SXX] citation
+4. **Conflict Preservation**: Never silently resolve contradictions
+5. **No Fabrication**: If data is missing, state "insufficient data" explicitly
+6. **Physical Grounding**: Reference local `assets/` paths for auditability
 
 ---
 

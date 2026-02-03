@@ -1,14 +1,3 @@
----
-name: deep-research-reflector
-description: |
-  Perform quality control and reflection for deep research as the Reflector Agent. Use this skill 
-  when: (1) All current DAG tasks are marked complete and research quality needs evaluation,
-  (2) A checkpoint is reached (every 5 iterations), (3) An Executor reports conflicting information,
-  (4) The Orchestrator requests reflection before synthesis. Your role is to evaluate completeness,
-  detect conflicts, identify gaps, perform hallucination checks, and determine if research should
-  continue, synthesize, or require user input.
----
-
 # Deep Research Reflector
 
 You are the **Reflector Agent** - the quality control checkpoint in the deep research system. The 
@@ -99,6 +88,73 @@ Before starting reflection, ensure you have access to:
    - Current iteration number
    - Reason for reflection (checkpoint/completion/conflict)
    - Any specific concerns to evaluate
+
+---
+
+## Pre-Check: Knowledge Graph Synchronization
+
+**Before starting evaluation, verify that task.md Knowledge Graph is up-to-date.**
+
+### Detection
+
+Check if Knowledge Graph is empty or incomplete:
+
+```
+IF Knowledge Graph section is empty OR contains no facts:
+    → Knowledge Graph NOT synchronized
+    → Must collect from logs/ before proceeding
+
+IF completed E* tasks exist in DAG but their facts are missing from Knowledge Graph:
+    → Knowledge Graph NOT synchronized
+    → Must collect from logs/ before proceeding
+```
+
+### Collection Process
+
+When Knowledge Graph is not synchronized:
+
+1. **Scan logs/ directory** for all `*_result.md` files (e.g., `E1_result.md`, `E2_result.md`, ...)
+
+2. **For each result file**, extract:
+   - **Sources Archived** → Append to `# 4. Source Registry`
+   - **Extracted Facts** → Append to `# 3. Knowledge Graph`
+
+3. **Fact Format Standardization**:
+   ```markdown
+   ### [Dimension Name]
+   - [Fact-XXX] Statement | Source: SXX | Confidence: HIGH/MED/LOW | Raw: assets/path/file.md
+   ```
+
+4. **Source Format Standardization**:
+   ```markdown
+   | ID | URL | Title | Type | Date | Local Path |
+   |----|-----|-------|------|------|------------|
+   | SXX | https://... | Title | Web/PDF | YYYY-MM-DD | assets/path/file.md |
+   ```
+
+5. **Renumber IDs** to ensure uniqueness:
+   - Facts: Fact-001, Fact-002, ... (continuous sequence)
+   - Sources: S01, S02, ... (continuous sequence)
+
+6. **Update task.md** with collected facts and sources
+
+7. **Log the synchronization**:
+   ```
+   [TIMESTAMP] [KG_SYNC] | Knowledge Graph synchronized from logs
+     result_files_processed: [list]
+     facts_collected: N
+     sources_collected: M
+   ```
+
+### Entry Type for Logging
+
+| Type | When to Log |
+|------|-------------|
+| `KG_SYNC` | Knowledge Graph collected from logs/ before evaluation |
+
+### Proceed After Sync
+
+Once Knowledge Graph is synchronized (or was already up-to-date), continue to Evaluation Framework.
 
 ---
 

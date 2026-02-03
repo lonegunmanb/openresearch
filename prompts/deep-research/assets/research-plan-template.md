@@ -98,7 +98,3 @@ The final report will:
 - **YES**: I will create `task.md` and begin the research process
 - **NO**: Please explain what changes you'd like, or we can end here
 - **MODIFY**: Tell me what to adjust in the plan
-
----
-
-*Awaiting your response...*
