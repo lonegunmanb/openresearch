@@ -229,7 +229,7 @@ WORKING_DIR: /path/to/research" --dangerously-skip-permissions
 
 ### Phase 4: Reflection
 
-**Triggers**: All DAG tasks complete | Every 5 iterations | Conflict reported
+**Triggers**: All DAG tasks complete or Every 5 iterations or Conflict reported
 
 Dispatch Reflector Agent with: `[RESEARCH_TASK]`, `[DIMENSIONS]`, `[KNOWLEDGE_GRAPH]`, `[SOURCE_REGISTRY]`
 
@@ -245,6 +245,11 @@ Dispatch Reflector Agent with: `[RESEARCH_TASK]`, `[DIMENSIONS]`, `[KNOWLEDGE_GR
 ### Phase 5: Synthesis
 
 When `status: "SYNTHESIZING"`:
+
+**⚠️ Pre-condition Check**:
+Before dispatching Synthesizer, verify NO pending C* tasks exist:
+- If any C* task is incomplete → Dispatch Reflector Agent first → Wait for completion → Re-check
+- Only proceed to Synthesis when all C* tasks are resolved
 
 **Dispatch Synthesizer Agent with**:
 - `[ORIGINAL_USER_REQUEST]` — User's original research request (from task.md's Original Request field)
