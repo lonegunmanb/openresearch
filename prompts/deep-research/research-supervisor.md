@@ -74,43 +74,70 @@ Your sole responsibility is to manage the **RESEARCHING phase**: dispatch Execut
 
 ## Executor Dispatch
 
+### ⚠️ Multi-line Prompt: Use Temp File
+
+Command-line argument parsing may corrupt multi-line prompts. **Always write prompts to a temp file first**:
+
+1. Write the full prompt to `tmp/[TASK_ID]_prompt.txt`
+2. Pass a simple one-line command telling the agent to read that file
+
+### Dispatch Steps
+
+**Step 1**: Create temp directory if not exists
+```
+tmp/
+```
+
+**Step 2**: Write prompt file `tmp/E1_prompt.txt`:
+```markdown
+FIRST: Read prompts/deep-research/executor.md and follow ALL instructions.
+
+TASK: E1 - [Task description from DAG]
+DIMENSIONS: [Relevant dimensions for this task]
+SOURCES: [Expected source types: web, pdf, academic, etc.]
+
+REMINDER: 
+- Write structured results to logs/E1_result.md
+- Log actions to logs/E1.log
+- Never skip logging
+
+WORKING_DIR: [ABSOLUTE_PATH]
+```
+
+**Step 3**: Dispatch agent with simple command:
+```bash
+# The agent reads tmp/E1_prompt.txt and follows all instructions inside
+claude -p "Read tmp/E1_prompt.txt and follow ALL instructions in that file." --dangerously-skip-permissions
+copilot -p "Read tmp/E1_prompt.txt and follow ALL instructions in that file." --yolo
+gemini -p "Read tmp/E1_prompt.txt and follow ALL instructions in that file." --yolo
+```
+
 ### CLI Commands
 
 | Agent Type | CLI Command |
 |------------|-------------|
-| GitHub Copilot | `copilot -p "..." --allow-all-tools` |
-| Claude Code | `claude -p "..." --dangerously-skip-permissions` |
-| Gemini | `gemini -p "..." --yolo` |
-
-### Dispatch Template
-
-```bash
-claude -p "FIRST: Read prompts/deep-research/executor.md and follow ALL instructions.
-TASK: [Task ID] - [Task description from DAG]
-DIMENSIONS: [Relevant dimensions for this task]
-SOURCES: [Expected source types: web, pdf, academic, etc.]
-REMINDER: 
-- Write structured results to logs/[TASK_ID]_result.md
-- Log actions to logs/executor.log
-- Never skip logging
-WORKING_DIR: [ABSOLUTE_PATH]" --dangerously-skip-permissions
-```
+| GitHub Copilot | `copilot -p "Read tmp/[TASK_ID]_prompt.txt and follow ALL instructions in that file." --yolo` |
+| Claude Code | `claude -p "Read tmp/[TASK_ID]_prompt.txt and follow ALL instructions in that file." --dangerously-skip-permissions` |
+| Gemini | `gemini -p "Read tmp/[TASK_ID]_prompt.txt and follow ALL instructions in that file." --yolo` |
 
 ### Parallel Dispatch Pattern
 
 ```
-Step 1: Launch Executors in parallel
-  - run_in_terminal(command: "claude -p '...' ...", isBackground: true) → terminal_id_1
-  - run_in_terminal(command: "claude -p '...' ...", isBackground: true) → terminal_id_2
-  - run_in_terminal(command: "claude -p '...' ...", isBackground: true) → terminal_id_3
+Step 1: Write prompt files for all tasks in batch
+  - Create tmp/E1_prompt.txt, tmp/E2_prompt.txt, tmp/E3_prompt.txt
 
-Step 2: Poll for completion
+Step 2: Launch Executors in parallel
+  - run_in_terminal(command: "claude -p 'Read tmp/E1_prompt.txt and follow ALL instructions in that file.' ...", isBackground: true) → terminal_id_1
+  - run_in_terminal(command: "claude -p 'Read tmp/E2_prompt.txt and follow ALL instructions in that file.' ...", isBackground: true) → terminal_id_2
+  - run_in_terminal(command: "claude -p 'Read tmp/E3_prompt.txt and follow ALL instructions in that file.' ...", isBackground: true) → terminal_id_3
+
+Step 3: Poll for completion
   - get_terminal_output(id: terminal_id_1)
   - get_terminal_output(id: terminal_id_2)
   - get_terminal_output(id: terminal_id_3)
   - Repeat polling until all complete
 
-Step 3: Collect results
+Step 4: Collect results
   - Read logs/E1_result.md, logs/E2_result.md, etc.
   - Update task.md with facts and sources
 ```

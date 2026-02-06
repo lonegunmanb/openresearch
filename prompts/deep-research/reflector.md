@@ -197,34 +197,59 @@ Evaluate whether the research objectives can be answered:
 
 ### Phase 2: Conflict Detection
 
-Scan the Knowledge Graph for contradictory information:
+Scan the Knowledge Graph for contradictory information. **Reflector is the SOLE conflict detector** - Synthesizer will only use conflicts identified here.
+
+#### Evidence Weighting Algorithm
+
+Evaluate each source using weighted credibility:
+
+```
+W(source) = 0.6 × Authority + 0.4 × Freshness
+```
+
+**Authority Scores:**
+| Source Type | Score |
+|-------------|-------|
+| .gov / .edu / Official | 1.0 |
+| Academic journals | 0.9 |
+| Industry reports (WGC, IMF, etc.) | 0.8 |
+| Reputable news media | 0.7 |
+| Blogs / Forums / Social | 0.5 |
+
+**Freshness Scores:**
+| Recency | Score |
+|---------|-------|
+| Within research scope | 1.0 |
+| 1 year old | 0.8 |
+| 2+ years old | 0.6 |
+| Outdated | 0.3 |
 
 ```markdown
 ### Conflict Analysis
 
 #### Detected Conflicts
 
-| ID | Topic | Fact A | Fact B | Sources | Severity |
-|----|-------|--------|--------|---------|----------|
-| CONF-1 | [topic] | [Fact-XXX]: [statement] | [Fact-YYY]: [statement] | [S01] vs [S02] | High/Medium/Low |
-| CONF-2 | ... | ... | ... | ... | ... |
+| ID | Topic | Fact A | Fact B | Sources | W(S1) | W(S2) | Severity |
+|----|-------|--------|--------|---------|-------|-------|----------|
+| CONF-1 | [topic] | [Fact-XXX]: [statement] | [Fact-YYY]: [statement] | [S01] vs [S02] | 0.XX | 0.XX | High/Medium/Low |
+| CONF-2 | ... | ... | ... | ... | ... | ... | ... |
 
 #### Conflict Resolution Assessment
 
-For each HIGH severity conflict:
+For each conflict:
 1. **CONF-1**: [Topic]
-   - [S01] credibility: [assessment]
-   - [S02] credibility: [assessment]
-   - Recency comparison: [S01: date] vs [S02: date]
+   - W([S01]) = 0.6 × [Authority] + 0.4 × [Freshness] = [score]
+   - W([S02]) = 0.6 × [Authority] + 0.4 × [Freshness] = [score]
+   - Score difference: [|W(S01) - W(S02)|]
    - Methodology notes: [if available]
    - Recommended resolution: [Accept S01 / Accept S02 / Need third source]
    - Action: [Create C* task / Mark for synthesis caveat]
 ```
 
 **Severity Classification:**
-- **High**: Core claims contradict, affects main conclusions
-- **Medium**: Secondary claims differ, should be noted in report
-- **Low**: Minor discrepancies, can be acknowledged briefly
+- **High**: Core claims contradict, affects main conclusions → **Create C* task**
+- **Medium**: Secondary claims differ → Mark for report, suggest framing
+- **Low**: Minor discrepancies → Acknowledge briefly in report
 
 ### Phase 3: Hallucination Check
 
@@ -457,6 +482,44 @@ Generate a structured reflection report:
 
 - [ ] E[N]: Execute: [task description] (Status: PENDING, DependsOn: [IDs])
 - [ ] C[N]: Conflict: [resolution task] (Status: PENDING, DependsOn: [IDs])
+
+#### C* Task Output Format (for Executor reference):
+
+When a C* task is executed, it MUST produce a resolution report:
+
+```markdown
+# Conflict Resolution: C[N]
+
+## Conflict Summary
+- **CONF-ID**: CONF-X
+- **Topic**: [冲突主题]
+- **Fact A**: [Fact-XXX] - [陈述] (Source: S01, W=0.XX)
+- **Fact B**: [Fact-YYY] - [陈述] (Source: S02, W=0.XX)
+
+## Evidence Evaluation
+
+| Source | Authority | Freshness | W Score |
+|--------|-----------|-----------|--------|
+| S01 | [type] (X.X) | [recency] (X.X) | 0.XX |
+| S02 | [type] (X.X) | [recency] (X.X) | 0.XX |
+
+## Resolution Decision
+
+**Adopted**: S01 / S02 (Fact-XXX / Fact-YYY)
+**Reasoning**: [详细解释为什么选择此来源]
+**Discarded Context**: [被舍弃来源的背景，为何可能有偏差]
+
+## Report Presentation Guidance
+
+> 建议在报告中这样呈现此冲突：
+> "关于[主题]，[来源类型A]显示[X] [S01]，而[来源类型B]报道[Y] [S02]。
+> 本报告采用[X]，因[理由]。"
+
+## Knowledge Graph Update
+
+- [Fact-XXX] [陈述] | Source: S01 | Confidence: HIGH | Verified: ✅
+- [Fact-YYY] ~~DEPRECATED~~ | Reason: Lower credibility (W=0.XX < 0.XX)
+```
 
 #### Tasks to Re-open:
 

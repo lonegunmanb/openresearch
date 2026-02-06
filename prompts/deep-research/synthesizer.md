@@ -116,36 +116,30 @@ Build an in-memory mapping of facts to sources:
 
 **CRITICAL**: If any fact lacks a valid Source ID, flag as error and report to Orchestrator.
 
-### Phase 2: Cross-Source Conflict Resolution
+### Phase 2: Conflict Presentation (from Reflector)
 
-For conflicting data points identified by Reflector or detected in Knowledge Graph:
+**IMPORTANT**: Synthesizer does NOT perform independent conflict detection. All conflicts are identified and resolved by Reflector.
 
-#### Evidence Weighting Algorithm
+#### Input: Conflict Registry from Reflector
 
-Evaluate each conflict using weighted credibility:
+Read conflict data from:
+1. `logs/reflector.log` - `[CONFLICT_DETECTED]` entries
+2. `task.md` Scratchpad - "Conflicts to address in report" section
+3. C* task results in `logs/` - Resolution decisions for HIGH severity conflicts
 
-```
-W(source) = α × DomainAuthority + β × ContentFreshness
+#### Presentation Guidelines
 
-Where:
-- DomainAuthority: .gov/.edu (1.0) > Academic journals (0.9) > Industry reports (0.8) > News (0.7) > Blogs (0.5)
-- ContentFreshness: Within scope (1.0) > 1 year old (0.8) > 2+ years (0.6) > Outdated (0.3)
-- α = 0.6, β = 0.4
-```
-
-#### Resolution Output Format
-
-For each conflict:
+For each conflict passed by Reflector:
 
 ```markdown
-**Conflict Resolution**: [Topic]
-- Source [S01] (Score: X.X): [Claim A]
-- Source [S02] (Score: Y.Y): [Claim B]
-- Decision: Adopt [S01/S02] because [reasoning]
-- Report treatment: [how to present in report]
+**Conflict Presentation**: [Topic]
+- Reflector Decision: [Adopted source and reasoning from C* task or reflector notes]
+- Source [S01] (W=X.X): [Claim A]
+- Source [S02] (W=Y.Y): [Claim B]
+- Report treatment: [Use Reflector's suggested framing]
 ```
 
-**Important**: Always PRESERVE conflicts in the report. Never silently average or omit contradictions.
+**Important**: Always PRESERVE conflicts in the report using Reflector's suggested framing. Never silently average or omit contradictions.
 
 ### Phase 3: Narrative Construction
 
@@ -285,11 +279,13 @@ facts_count: [N]
 
 > ⚠️ **MANDATORY**: This section MUST contain the **COMPLETE Source Registry** from `task.md`.
 > Copy the entire Source Registry verbatim. Do NOT summarize or omit any sources.
+> 
+> **URL REQUIREMENT**: Every source MUST include its URL in Markdown hyperlink format: `[Title](URL)`
 
 | ID | Source | Type | Date | Local Archive |
 |----|--------|------|------|---------------|
-| S01 | [URL/Title] | [PDF/Web/Report] | [Date] | [assets/path] |
-| S02 | [URL/Title] | [Type] | [Date] | [assets/path] |
+| S01 | [Title](https://example.com/article) | PDF/Web/Report | YYYY-MM-DD | assets/web/file.md |
+| S02 | [Title](https://example.com/paper) | Type | YYYY-MM-DD | assets/pdf/file.pdf |
 | ... | ... | ... | ... | ... |
 
 ---

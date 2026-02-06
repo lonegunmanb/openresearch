@@ -97,6 +97,41 @@ gemini -p "Task description" --approval-mode auto_edit # Auto-approve edit tools
 gemini -p "Task description" --approval-mode plan      # Read-only mode
 ```
 
+### ⚠️ Multi-line Prompts: Use Temp File
+
+Command-line argument parsing may corrupt multi-line prompts. **Always use a temp file** to pass complex prompts:
+
+```powershell
+# PowerShell (Windows/Linux/macOS)
+$promptFile = [System.IO.Path]::GetTempFileName()
+@"
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: C:\project\myproject
+"@ | Set-Content -Path $promptFile -Encoding UTF8
+
+$p = Get-Content -Raw $promptFile
+gemini -p $p --yolo
+Remove-Item $promptFile
+```
+
+```bash
+# Bash (Linux/macOS)
+PROMPT_FILE=$(mktemp)
+cat > "$PROMPT_FILE" << 'EOF'
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: /path/to/project
+EOF
+
+gemini -p "$(cat $PROMPT_FILE)" --yolo
+rm "$PROMPT_FILE"
+```
+
+**Why?** Shell argument parsing may truncate or mangle arguments containing newlines. Passing via a variable from file content bypasses this issue.
+
 ### Interactive Mode with Prompt
 
 Use `-i` / `--prompt-interactive` to execute prompt and continue in interactive mode:

@@ -96,6 +96,41 @@ copilot -p "Task description" --allow-all
 copilot -p "Task description" --yolo
 ```
 
+### ⚠️ Multi-line Prompts: Use Temp File
+
+Command-line argument parsing may corrupt multi-line prompts. **Always use a temp file** to pass complex prompts:
+
+```powershell
+# PowerShell (Windows/Linux/macOS)
+$promptFile = [System.IO.Path]::GetTempFileName()
+@"
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: C:\project\myproject
+"@ | Set-Content -Path $promptFile -Encoding UTF8
+
+$p = Get-Content -Raw $promptFile
+copilot -p $p --yolo --add-dir .
+Remove-Item $promptFile
+```
+
+```bash
+# Bash (Linux/macOS)
+PROMPT_FILE=$(mktemp)
+cat > "$PROMPT_FILE" << 'EOF'
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: /path/to/project
+EOF
+
+copilot -p "$(cat $PROMPT_FILE)" --yolo --add-dir .
+rm "$PROMPT_FILE"
+```
+
+**Why?** Shell argument parsing may truncate or mangle arguments containing newlines. Passing via a variable from file content bypasses this issue.
+
 ### Interactive Mode with Initial Prompt
 
 Use `-i` to start interactive mode and auto-execute a prompt:

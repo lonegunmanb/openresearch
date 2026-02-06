@@ -97,6 +97,41 @@ claude -p "Task description" --permission-mode plan
 claude -p "Task description" --permission-mode acceptEdits
 ```
 
+### ⚠️ Multi-line Prompts: Use Temp File
+
+Command-line argument parsing may corrupt multi-line prompts. **Always use a temp file** to pass complex prompts:
+
+```powershell
+# PowerShell (Windows/Linux/macOS)
+$promptFile = [System.IO.Path]::GetTempFileName()
+@"
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: C:\project\myproject
+"@ | Set-Content -Path $promptFile -Encoding UTF8
+
+$p = Get-Content -Raw $promptFile
+claude -p $p --dangerously-skip-permissions
+Remove-Item $promptFile
+```
+
+```bash
+# Bash (Linux/macOS)
+PROMPT_FILE=$(mktemp)
+cat > "$PROMPT_FILE" << 'EOF'
+FIRST: Read the planner.md file.
+
+TASK: Create a research plan.
+WORKING_DIR: /path/to/project
+EOF
+
+claude -p "$(cat $PROMPT_FILE)" --dangerously-skip-permissions
+rm "$PROMPT_FILE"
+```
+
+**Why?** Shell argument parsing may truncate or mangle arguments containing newlines. Passing via a variable from file content bypasses this issue.
+
 ### Interactive Mode with Prompt
 
 Start interactive mode with an initial prompt:
