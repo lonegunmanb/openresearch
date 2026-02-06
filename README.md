@@ -493,7 +493,7 @@ go install
 deepresearch --model claude-opus-4.5 -p "Research the impact of AI on software development jobs in 2025"
 
 # Using an input file
-deepresearch --model claude-opus-4.5 -p "@input.md"
+deepresearch --model claude-opus-4.5 -f "input.md"
 
 # Interactive mode (allows clarifying questions)
 deepresearch --model claude-opus-4.5

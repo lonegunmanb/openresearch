@@ -484,10 +484,10 @@ openresearch/
 deepresearch --model claude-opus-4.5 -p "研究 AI 对 2025 年软件开发工作的影响"
 
 # 使用输入文件
-deepresearch --model claude-opus-4.5 -p "@input.md"
+deepresearch --model claude-opus-4.5 -f "input.md"
 
 # 交互模式（允许澄清问题）
-deepresearch --model claude-opus-4.5 --interactive
+deepresearch --model claude-opus-4.5
 ```
 
 ---
