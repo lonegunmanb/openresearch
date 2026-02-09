@@ -34,6 +34,16 @@ OpenResearch 是一个 AI 驱动的自主研究系统，它编排多个专业化
 | 依赖 | 版本 | 说明 |
 |------|------|------|
 | **Go** | ≥ 1.21 | 用于构建和运行编排器 |
+| **Python** | ≥ 3.10 | 用于 Playwright 浏览器自动化 |
+| **Node.js** | ≥ 18.0 | Playwright 运行时依赖 |
+| **Playwright** | 最新 | 浏览器自动化框架 |
+
+安装 Playwright 及其浏览器依赖：
+
+```bash
+pip install playwright
+playwright install --with-deps
+```
 
 ### AI 代理 CLI（以下任选其一）
 

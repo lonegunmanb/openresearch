@@ -34,6 +34,16 @@ Before using OpenResearch, ensure you have the following installed:
 | Dependency | Version | Description |
 |------------|---------|-------------|
 | **Go** | ≥ 1.21 | Required for building and running the orchestrator |
+| **Python** | ≥ 3.10 | Required for Playwright browser automation |
+| **Node.js** | ≥ 18.0 | Playwright runtime dependency |
+| **Playwright** | Latest | Browser automation framework |
+
+Install Playwright and its browser dependencies:
+
+```bash
+pip install playwright
+playwright install --with-deps
+```
 
 ### AI Agent CLI (One of the following)
 
